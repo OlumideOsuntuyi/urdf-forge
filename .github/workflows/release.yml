@@ -113,7 +113,7 @@ jobs:
             cp "$f" "urdf-forge-${GITHUB_REF_NAME}-$(basename "$f")"
           done
           gh release upload "$GITHUB_REF_NAME" urdf-forge-*.apk --clobber || echo "Release not found; APKs are kept as an artifact."
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: urdf-forge-android
           path: urdf-forge-*.apk
