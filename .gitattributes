@@ -1,0 +1,11 @@
+* text=auto eol=lf
+*.png binary
+*.ico binary
+*.icns binary
+*.stl binary
+*.step binary
+*.stp binary
+*.wasm binary
+*.forge binary
+*.bat text eol=crlf
+*.cmd text eol=crlf

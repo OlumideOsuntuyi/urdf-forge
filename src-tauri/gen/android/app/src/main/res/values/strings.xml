@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">"URDF Forge"</string>
+    <string name="main_activity_title">"URDF Forge"</string>
+</resources>

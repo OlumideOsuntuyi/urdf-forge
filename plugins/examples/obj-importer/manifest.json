@@ -1,0 +1,9 @@
+{
+  "id": "example.obj-importer",
+  "name": "OBJ importer",
+  "version": "1.0.0",
+  "description": "Imports Wavefront OBJ meshes; each object or group becomes a body.",
+  "author": "URDF Forge contributors",
+  "main": "main.js",
+  "apiVersion": 1
+}

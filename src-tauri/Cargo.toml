@@ -1,0 +1,35 @@
+[package]
+name = "urdf-forge"
+version = "0.1.0"
+description = "Turn STEP and STL CAD models into ROS 2 robot description packages."
+authors = ["URDF Forge contributors"]
+license = "Apache-2.0"
+repository = "https://github.com/OlumideOsuntuyi/urdf-forge"
+edition = "2021"
+rust-version = "1.77.2"
+
+[lib]
+# The _lib suffix avoids a name clash with the binary on Windows (cargo#8519).
+name = "urdf_forge_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
+tauri-plugin-opener = "2"
+tauri-plugin-os = "2"
+tauri-plugin-http = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tiny_http = "0.12"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+panic = "abort"
+strip = true

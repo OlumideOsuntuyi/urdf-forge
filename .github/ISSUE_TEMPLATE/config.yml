@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions and ideas
+    url: https://github.com/OlumideOsuntuyi/urdf-forge/discussions
+    about: Ask how to do something, or discuss an idea before filing a request.
+  - name: Security vulnerability
+    url: https://github.com/OlumideOsuntuyi/urdf-forge/security/advisories/new
+    about: Report security issues privately, not as public issues.

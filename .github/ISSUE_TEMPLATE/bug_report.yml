@@ -1,0 +1,61 @@
+name: Bug report
+description: Something does not work, or an exported package fails in ROS or Gazebo.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for taking the time to report this. A file that reproduces the problem is the fastest way to a fix.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Import ...
+        2. Select ...
+        3. Export for ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: URDF Forge version
+      description: Settings → About.
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options: [Windows, macOS, Linux, Android]
+    validations:
+      required: true
+  - type: dropdown
+    id: target
+    attributes:
+      label: Export target (if the problem is in ROS or Gazebo)
+      options:
+        - Not export related
+        - ROS 2 Humble · Gazebo Fortress
+        - ROS 2 Humble · Gazebo Classic
+        - ROS 2 Jazzy · Gazebo Harmonic
+        - ROS 2 Kilted · Gazebo Ionic
+        - ROS 2 Lyrical · Gazebo Jetty
+        - ROS 2 Rolling · Gazebo Jetty
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error messages or logs
+      description: From the app, `ros2 launch`, `colcon build`, `check_urdf` or Gazebo.
+      render: text
+  - type: textarea
+    id: files
+    attributes:
+      label: Files
+      description: Attach a small STEP/STL or `.forge` project that shows the problem, if you can share it.

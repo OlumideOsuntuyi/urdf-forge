@@ -1,0 +1,31 @@
+URDF Forge
+Copyright 2026 URDF Forge contributors
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+It includes or depends on the following third-party software:
+
+- Tauri (https://tauri.app) - MIT or Apache-2.0
+- three.js (https://threejs.org) - MIT
+- React and React DOM (https://react.dev) - MIT
+- Zustand (https://github.com/pmndrs/zustand) - MIT
+- Rapier physics engine, @dimforge/rapier3d-compat (https://rapier.rs) - Apache-2.0
+- fflate (https://github.com/101arrowz/fflate) - MIT
+- Lucide icons, lucide-react (https://lucide.dev) - ISC
+- Inter and JetBrains Mono fonts via Fontsource - SIL Open Font License 1.1
+- occt-import-js (https://github.com/kovacsv/occt-import-js) - LGPL-2.1
+  which bundles Open CASCADE Technology (https://dev.opencascade.org) - LGPL-2.1
+  with the Open CASCADE exception.
+
+Materials and HDRIs offered in the material library are downloaded at run time from
+ambientCG (https://ambientcg.com) and are licensed CC0 1.0 Universal. Sample robots and
+environments are downloaded at run time from their authors' repositories, Gazebo Fuel and
+AWS RoboMaker; they are not distributed with URDF Forge and keep their own licences, shown
+in the sample gallery.
+
+occt-import-js and Open CASCADE are used unmodified and are shipped as a separate
+WebAssembly file (occt-import-js.wasm) loaded at run time. You may replace that file with
+your own build of occt-import-js. Its source code is available at
+https://github.com/kovacsv/occt-import-js and the Open CASCADE source at
+https://github.com/Open-Cascade-SAS/OCCT. The full LGPL-2.1 text is distributed with the
+occt-import-js package (dist/license.occt.txt).

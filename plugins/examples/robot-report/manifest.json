@@ -1,0 +1,9 @@
+{
+  "id": "example.robot-report",
+  "name": "Robot report",
+  "version": "1.0.0",
+  "description": "Mass breakdown as a command, a CSV exporter and an MCP tool.",
+  "author": "URDF Forge contributors",
+  "main": "main.js",
+  "apiVersion": 1
+}

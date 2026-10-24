@@ -1,0 +1,39 @@
+name: Feature request
+description: Suggest an improvement or a new capability.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: Describe the robot or workflow and where URDF Forge got in the way.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would help?
+      description: How you imagine it working. Mock-ups and links to other tools are welcome.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        [
+          CAD import,
+          Editing the robot,
+          Viewport,
+          Simulation preview,
+          Export / ROS / Gazebo,
+          Plugins,
+          MCP / AI assistants,
+          Interface and themes,
+          Android,
+          Other,
+        ]
+  - type: checkboxes
+    id: plugin
+    attributes:
+      label: Plugin
+      options:
+        - label: This could be a plugin, and I might write it.

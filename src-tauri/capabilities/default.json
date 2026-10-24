@@ -1,0 +1,48 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Permissions for the main window. Opening CAD files from anywhere on disk is the app's purpose, so file access is not limited to particular folders.",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "dialog:default",
+    "dialog:allow-open",
+    "dialog:allow-save",
+    "opener:default",
+    {
+      "identifier": "opener:allow-open-path",
+      "allow": [{ "path": "$APPDATA/plugins" }, { "path": "$APPDATA/plugins/**" }]
+    },
+    {
+      "identifier": "opener:allow-open-url",
+      "allow": [{ "url": "https://*" }]
+    },
+    "os:default",
+    {
+      "identifier": "http:default",
+      "allow": [
+        { "url": "https://raw.githubusercontent.com/**" },
+        { "url": "https://github.com/**" },
+        { "url": "https://codeload.github.com/**" },
+        { "url": "https://objects.githubusercontent.com/**" },
+        { "url": "https://media.githubusercontent.com/**" },
+        { "url": "https://fuel.gazebosim.org/**" },
+        { "url": "https://fuel.ignitionrobotics.org/**" },
+        { "url": "https://ambientcg.com/**" },
+        { "url": "https://acg-download.struffelproductions.com/**" },
+        { "url": "https://acg-media.struffelproductions.com/**" }
+      ]
+    },
+    "fs:default",
+    "fs:allow-read-file",
+    "fs:allow-read-text-file",
+    "fs:allow-write-file",
+    "fs:allow-mkdir",
+    "fs:allow-exists",
+    "fs:allow-read-dir",
+    {
+      "identifier": "fs:scope",
+      "allow": [{ "path": "**" }, { "path": "$APPDATA/**" }, { "path": "$HOME/**" }]
+    }
+  ]
+}

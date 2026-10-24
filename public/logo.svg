@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#262b33"/>
+      <stop offset="1" stop-color="#121417"/>
+    </linearGradient>
+    <linearGradient id="metal" gradientUnits="userSpaceOnUse" x1="0" y1="260" x2="0" y2="720">
+      <stop offset="0" stop-color="#ffb066"/>
+      <stop offset="1" stop-color="#ff6a1f"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.62" r="0.55">
+      <stop offset="0" stop-color="#ff8a3d" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#ff8a3d" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect x="64" y="64" width="896" height="896" rx="200" fill="url(#bg)"/>
+  <rect x="64" y="64" width="896" height="896" rx="200" fill="url(#glow)"/>
+  <rect x="66" y="66" width="892" height="892" rx="198" fill="none" stroke="#ffffff" stroke-opacity="0.08" stroke-width="4"/>
+  <!-- base -->
+  <rect x="250" y="690" width="330" height="90" rx="30" fill="#3a414b"/>
+  <rect x="250" y="690" width="330" height="20" rx="10" fill="#ffffff" fill-opacity="0.08"/>
+  <!-- lower arm -->
+  <path d="M415 700 L415 560" stroke="url(#metal)" stroke-width="96" stroke-linecap="round"/>
+  <!-- upper arm -->
+  <path d="M415 470 L655 300" stroke="url(#metal)" stroke-width="84" stroke-linecap="round"/>
+  <!-- joints -->
+  <circle cx="415" cy="500" r="92" fill="#1b1f25" stroke="#ff8a3d" stroke-width="22"/>
+  <circle cx="415" cy="500" r="30" fill="#ff8a3d"/>
+  <circle cx="680" cy="282" r="64" fill="#1b1f25" stroke="#ffb066" stroke-width="18"/>
+  <circle cx="680" cy="282" r="20" fill="#ffb066"/>
+  <!-- frame axes -->
+  <path d="M720 690 L840 690" stroke="#e5484d" stroke-width="22" stroke-linecap="round"/>
+  <path d="M720 690 L720 570" stroke="#3e7bfa" stroke-width="22" stroke-linecap="round"/>
+  <path d="M720 690 L790 630" stroke="#46a758" stroke-width="22" stroke-linecap="round"/>
+</svg>
