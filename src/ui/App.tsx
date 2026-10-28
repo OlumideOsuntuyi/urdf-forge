@@ -110,7 +110,13 @@ export function App() {
       }
     });
     const unsub = useSettings.subscribe((s, p) => {
-      if (s.mcpEnabled !== p.mcpEnabled || s.mcpPort !== p.mcpPort) setMcpRunning(s.mcpEnabled);
+      if (
+        s.mcpEnabled !== p.mcpEnabled ||
+        s.mcpPort !== p.mcpPort ||
+        s.mcpRequireToken !== p.mcpRequireToken ||
+        s.mcpToken !== p.mcpToken
+      )
+        setMcpRunning(s.mcpEnabled);
     });
     let unlisten: (() => void) | undefined;
     import("@tauri-apps/api/webview").then(({ getCurrentWebview }) =>

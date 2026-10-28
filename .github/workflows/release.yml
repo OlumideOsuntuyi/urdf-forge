@@ -79,6 +79,9 @@ jobs:
           distribution: temurin
           java-version: 17
       - uses: android-actions/setup-android@v3
+        with:
+          # The default also installs "tools", which the SDK no longer provides.
+          packages: platform-tools
       - name: Android NDK
         run: |
           sdkmanager --install "ndk;27.2.12479018" "platforms;android-36" "build-tools;36.0.0"

@@ -4,6 +4,9 @@
 //! guards against DNS-rebinding attacks from web pages. `initialize` and `ping` are answered
 //! here; `tools/list` and `tools/call` are forwarded to the webview, which owns the tools, and
 //! the reply comes back through the `mcp_respond` command.
+//!
+//! Optionally every request must also carry `Authorization: Bearer <token>`, so other programs
+//! running on this computer cannot drive the editor.
 
 use serde::Serialize;
 use serde_json::{json, Value};
@@ -22,6 +25,7 @@ const MAX_BODY: usize = 16 * 1024 * 1024;
 const TOOL_TIMEOUT: Duration = Duration::from_secs(300);
 
 type Pending = Arc<Mutex<HashMap<u64, mpsc::Sender<Value>>>>;
+type Token = Arc<Mutex<Option<String>>>;
 
 struct Running {
     server: Arc<Server>,
@@ -33,6 +37,8 @@ pub struct McpState {
     running: Mutex<Option<Running>>,
     pending: Pending,
     next_id: Arc<AtomicU64>,
+    /// Required bearer token, if any. Read per request, so changing it needs no restart.
+    token: Token,
 }
 
 #[derive(Serialize)]
@@ -57,7 +63,13 @@ fn status(port: u16, running: bool, error: Option<String>) -> Status {
 }
 
 #[tauri::command]
-pub fn mcp_start(app: AppHandle, state: State<'_, McpState>, port: u16) -> Status {
+pub fn mcp_start(
+    app: AppHandle,
+    state: State<'_, McpState>,
+    port: u16,
+    token: Option<String>,
+) -> Status {
+    *state.token.lock().unwrap() = token.filter(|t| !t.trim().is_empty());
     let mut running = state.running.lock().unwrap();
     if let Some(r) = running.as_ref() {
         if r.port == port {
@@ -79,12 +91,14 @@ pub fn mcp_start(app: AppHandle, state: State<'_, McpState>, port: u16) -> Statu
     let srv = server.clone();
     let pending = state.pending.clone();
     let next_id = state.next_id.clone();
+    let token = state.token.clone();
     thread::spawn(move || {
         for request in srv.incoming_requests() {
             let app = app.clone();
             let pending = pending.clone();
             let next_id = next_id.clone();
-            thread::spawn(move || handle(request, &app, &pending, &next_id));
+            let token = token.clone();
+            thread::spawn(move || handle(request, &app, &pending, &next_id, &token));
         }
     });
     *running = Some(Running { server, port });
@@ -141,6 +155,26 @@ fn origin_allowed(req: &Request) -> bool {
     }
 }
 
+/// True when no token is required, or the request carries `Authorization: Bearer <token>`.
+fn auth_ok(header: Option<&str>, expected: Option<&str>) -> bool {
+    let Some(expected) = expected else {
+        return true;
+    };
+    let Some(given) = header.and_then(|h| {
+        let (scheme, rest) = h.trim().split_once(' ')?;
+        scheme.eq_ignore_ascii_case("bearer").then(|| rest.trim())
+    }) else {
+        return false;
+    };
+    // Constant time in the token's contents.
+    given.len() == expected.len()
+        && given
+            .bytes()
+            .zip(expected.bytes())
+            .fold(0u8, |acc, (a, b)| acc | (a ^ b))
+            == 0
+}
+
 fn respond(req: Request, code: u16, body: Option<Value>) {
     let mut resp = match body {
         Some(v) => Response::from_string(v.to_string())
@@ -151,6 +185,9 @@ fn respond(req: Request, code: u16, body: Option<Value>) {
     if code == 405 {
         resp = resp.with_header(header("Allow", "POST"));
     }
+    if code == 401 {
+        resp = resp.with_header(header("WWW-Authenticate", "Bearer"));
+    }
     let _ = req.respond(resp);
 }
 
@@ -158,9 +195,27 @@ fn rpc_error(id: &Value, code: i64, message: &str) -> Value {
     json!({ "jsonrpc": "2.0", "id": id, "error": { "code": code, "message": message } })
 }
 
-fn handle(mut req: Request, app: &AppHandle, pending: &Pending, next_id: &AtomicU64) {
+fn handle(
+    mut req: Request,
+    app: &AppHandle,
+    pending: &Pending,
+    next_id: &AtomicU64,
+    token: &Token,
+) {
     if !origin_allowed(&req) {
         return respond(req, 403, Some(json!({ "error": "Origin not allowed" })));
+    }
+    let given = req
+        .headers()
+        .iter()
+        .find(|h| h.field.equiv("Authorization"))
+        .map(|h| h.value.as_str().to_string());
+    if !auth_ok(given.as_deref(), token.lock().unwrap().as_deref()) {
+        return respond(
+            req,
+            401,
+            Some(json!({ "error": "Missing or wrong access token (Authorization: Bearer ...)" })),
+        );
     }
     let path = req.url().split('?').next().unwrap_or("").to_string();
     if path != "/mcp" && path != "/" {
@@ -280,5 +335,28 @@ fn forward(
             pending.lock().unwrap().remove(&id);
             Err("The editor did not answer in time.".into())
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::auth_ok;
+
+    #[test]
+    fn open_when_no_token_is_set() {
+        assert!(auth_ok(None, None));
+        assert!(auth_ok(Some("Bearer anything"), None));
+    }
+
+    #[test]
+    fn requires_the_exact_bearer_token() {
+        let t = Some("s3cret-token");
+        assert!(auth_ok(Some("Bearer s3cret-token"), t));
+        assert!(auth_ok(Some("bearer  s3cret-token "), t));
+        assert!(!auth_ok(None, t));
+        assert!(!auth_ok(Some("Bearer s3cret-tokem"), t));
+        assert!(!auth_ok(Some("Bearer s3cret"), t));
+        assert!(!auth_ok(Some("Basic s3cret-token"), t));
+        assert!(!auth_ok(Some("s3cret-token"), t));
     }
 }

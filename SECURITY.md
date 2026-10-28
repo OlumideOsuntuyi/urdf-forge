@@ -23,10 +23,11 @@ URDF Forge is a local desktop application. Things worth knowing when you assess 
 - **Plugins** run inside the app with the same rights as the app. None runs until the user
   enables it, and the app asks for confirmation the first time. Treat a plugin like any other
   program you install.
-- **MCP server.** Off by default. When enabled it listens on `127.0.0.1` only, answers
-  JSON-RPC over HTTP POST, and rejects requests whose `Origin` header is not a local origin, to
-  block DNS-rebinding attacks from web pages. Any local process can still reach it while it is
-  on; it does not authenticate clients. Its tools can only do what the editor can do, and
-  every edit is undoable.
+- **MCP server.** On by default. It listens on `127.0.0.1` only, answers JSON-RPC over HTTP
+  POST, and rejects requests whose `Origin` header is not a local origin, to block DNS-rebinding
+  attacks from web pages. Without a token any local process can reach it while it is on; turn
+  on **Require a token** in its settings to accept only requests carrying
+  `Authorization: Bearer <token>`. Its tools can only do what the editor can do, and every edit
+  is undoable.
 - **Content Security Policy.** The webview forbids remote scripts and `eval`; WebAssembly is
   allowed for OpenCascade and the physics engine.
