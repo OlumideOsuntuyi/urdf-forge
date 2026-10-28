@@ -111,11 +111,17 @@ export const SENSOR_TYPES = [
   "imu",
   "camera",
   "depth_camera",
+  "rgbd_camera",
   "lidar",
   "contact",
   "force_torque",
 ] as const;
 export type SensorType = (typeof SENSOR_TYPES)[number];
+
+/** Sensors with a camera block (field of view, resolution, clip planes). */
+export function isCameraSensor(type: SensorType): boolean {
+  return type === "camera" || type === "depth_camera" || type === "rgbd_camera";
+}
 
 export interface Sensor {
   id: string;

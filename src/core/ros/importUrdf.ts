@@ -1,6 +1,7 @@
 /** Read an existing URDF into the editor's model. */
 import {
   JOINT_TYPES,
+  isCameraSensor,
   newLink,
   newMaterial,
   newModel,
@@ -12,6 +13,8 @@ import {
   type Pose,
   type Rgba,
   type RobotModel,
+  type Sensor,
+  type SensorType,
   type Vec3,
 } from "../model";
 
@@ -30,6 +33,78 @@ const kid = (el: Element, tag: string) => kids(el, tag)[0] ?? null;
 function pose(el: Element | null): Pose {
   const o = el ? kid(el, "origin") : null;
   return { xyz: vec3(o?.getAttribute("xyz") ?? null), rpy: vec3(o?.getAttribute("rpy") ?? null) };
+}
+
+// Gazebo (gz and classic) sensor types, mapped to the editor's types.
+const SENSOR_TYPE_MAP: Record<string, SensorType> = {
+  imu: "imu",
+  camera: "camera",
+  depth: "depth_camera",
+  depth_camera: "depth_camera",
+  rgbd_camera: "rgbd_camera",
+  rgbd: "rgbd_camera",
+  gpu_lidar: "lidar",
+  gpu_ray: "lidar",
+  lidar: "lidar",
+  ray: "lidar",
+  contact: "contact",
+  force_torque: "force_torque",
+};
+
+/**
+ * One <sensor> from a <gazebo reference="..."> block. Noise models and the sensor's own <pose>
+ * have no place in the editor's model and are not kept.
+ */
+function sensorFrom(el: Element, linkName: string): Sensor | null {
+  const type = SENSOR_TYPE_MAP[el.getAttribute("type") ?? ""];
+  if (!type) return null;
+  const at = (...path: string[]): string | null => {
+    let cur: Element | null = el;
+    for (const tag of path) cur = cur ? kid(cur, tag) : null;
+    return cur?.textContent?.trim() || null;
+  };
+  const opt = (v: string | null): number | undefined => {
+    const n = v === null ? NaN : parseFloat(v);
+    return Number.isFinite(n) ? n : undefined;
+  };
+  const s: Sensor = {
+    id: uid("sen"),
+    type,
+    name: el.getAttribute("name") || `${linkName}_${type}`,
+    rate: num(at("update_rate"), type === "imu" ? 100 : type === "lidar" ? 10 : 30),
+    topic: at("topic") ?? "",
+  };
+  const set = (
+    k:
+      | "fov"
+      | "width"
+      | "height"
+      | "near"
+      | "far"
+      | "samples"
+      | "minAngle"
+      | "maxAngle"
+      | "rangeMin"
+      | "rangeMax",
+    v: number | undefined,
+  ) => {
+    if (v !== undefined) s[k] = v;
+  };
+  if (isCameraSensor(type)) {
+    set("fov", opt(at("camera", "horizontal_fov")));
+    set("width", opt(at("camera", "image", "width")));
+    set("height", opt(at("camera", "image", "height")));
+    set("near", opt(at("camera", "clip", "near")));
+    set("far", opt(at("camera", "clip", "far")));
+  } else if (type === "lidar") {
+    const tag = kid(el, "lidar") ? "lidar" : "ray";
+    set("samples", opt(at(tag, "scan", "horizontal", "samples")));
+    set("minAngle", opt(at(tag, "scan", "horizontal", "min_angle")));
+    set("maxAngle", opt(at(tag, "scan", "horizontal", "max_angle")));
+    set("rangeMin", opt(at(tag, "range", "min")));
+    set("rangeMax", opt(at(tag, "range", "max")));
+  }
+  return s;
 }
 
 export interface UrdfImport {
@@ -210,6 +285,10 @@ export function importUrdf(
     L.gazebo.maxVel = num(text("maxVel"), L.gazebo.maxVel);
     if (text("selfCollide")) L.gazebo.selfCollide = text("selfCollide") === "true";
     if (text("gravity")) L.gazebo.gravity = text("gravity") !== "false";
+    for (const el of kids(gz, "sensor")) {
+      const s = sensorFrom(el, L.name);
+      if (s) L.sensors.push(s);
+    }
   }
 
   if (!model.materials.length) model.materials.push(newMaterial("default", [0.56, 0.65, 0.73, 1]));

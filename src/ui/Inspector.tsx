@@ -22,6 +22,7 @@ import {
   ARTICULATED,
   JOINT_TYPES,
   SENSOR_TYPES,
+  isCameraSensor,
   hasJoint,
   isDescendantOrSelf,
   jointName,
@@ -518,7 +519,7 @@ function LinkInspector({
                 onChange={(v) => upd((x) => (x.sensors[i].rate = v), `s${i}r`)}
               />
             </Field>
-            {(s.type === "camera" || s.type === "depth_camera") && (
+            {isCameraSensor(s.type) && (
               <>
                 <Field label="Resolution">
                   <div className="vec3" style={{ gridTemplateColumns: "1fr 1fr" }}>

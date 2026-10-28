@@ -275,6 +275,7 @@ const BRIDGE_TYPES: Record<string, [string, string]> = {
   lidar: ["sensor_msgs/msg/LaserScan", "LaserScan"],
   camera: ["sensor_msgs/msg/Image", "Image"],
   depth_camera: ["sensor_msgs/msg/Image", "Image"],
+  rgbd_camera: ["sensor_msgs/msg/Image", "Image"],
   contact: ["ros_gz_interfaces/msg/Contacts", "Contacts"],
   force_torque: ["geometry_msgs/msg/Wrench", "Wrench"],
 };
@@ -297,6 +298,27 @@ export function bridgeYaml(model: RobotModel, T: Target): string {
     for (const s of L.sensors) {
       const [rosType, gzType] = BRIDGE_TYPES[s.type];
       const topic = sensorTopic(L, s);
+      if (s.type === "rgbd_camera") {
+        out.push(entry(`${topic}/image`, `${topic}/image`, rosType, gzType));
+        out.push(entry(`${topic}/depth_image`, `${topic}/depth_image`, rosType, gzType));
+        out.push(
+          entry(
+            `${topic}/points`,
+            `${topic}/points`,
+            "sensor_msgs/msg/PointCloud2",
+            "PointCloudPacked",
+          ),
+        );
+        out.push(
+          entry(
+            `${topic}/camera_info`,
+            `${topic}/camera_info`,
+            "sensor_msgs/msg/CameraInfo",
+            "CameraInfo",
+          ),
+        );
+        continue;
+      }
       out.push(entry(topic, topic, rosType, gzType));
       if (s.type === "camera" || s.type === "depth_camera") {
         const info = `${sensorName(L, s)}/camera_info`;

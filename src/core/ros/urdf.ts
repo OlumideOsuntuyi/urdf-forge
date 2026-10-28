@@ -2,6 +2,7 @@
 import {
   ARTICULATED,
   hasJoint,
+  isCameraSensor,
   isFrameLink,
   jointName,
   linkById,
@@ -174,9 +175,14 @@ export function sensorTopic(L: Link, s: Sensor): string {
   if (s.topic) return s.topic;
   const nm = sensorName(L, s);
   return (
-    { imu: "imu", lidar: "scan", camera: `${nm}/image`, depth_camera: `${nm}/depth_image` }[
-      s.type as string
-    ] ?? nm
+    {
+      imu: "imu",
+      lidar: "scan",
+      camera: `${nm}/image`,
+      depth_camera: `${nm}/depth_image`,
+      // rgbd_camera publishes <topic>/image, /depth_image, /points and /camera_info.
+      rgbd_camera: nm,
+    }[s.type as string] ?? nm
   );
 }
 
@@ -195,7 +201,7 @@ function sensorXml(L: Link, T: Target): string[] {
         ? classic
           ? "ray"
           : "gpu_lidar"
-        : s.type === "depth_camera"
+        : s.type === "depth_camera" || (s.type === "rgbd_camera" && classic)
           ? classic
             ? "depth"
             : "depth_camera"
@@ -204,7 +210,7 @@ function sensorXml(L: Link, T: Target): string[] {
     out.push(`      <always_on>true</always_on>`);
     out.push(`      <update_rate>${fmt(s.rate, 3)}</update_rate>`);
     out.push(`      <visualize>false</visualize>`);
-    if (s.type === "camera" || s.type === "depth_camera") {
+    if (isCameraSensor(s.type)) {
       out.push("      <camera>");
       out.push(`        <horizontal_fov>${fmt(s.fov ?? 1.047, 5)}</horizontal_fov>`);
       out.push(
@@ -235,6 +241,7 @@ function sensorXml(L: Link, T: Target): string[] {
         imu: "libgazebo_ros_imu_sensor.so",
         camera: "libgazebo_ros_camera.so",
         depth_camera: "libgazebo_ros_camera.so",
+        rgbd_camera: "libgazebo_ros_camera.so",
         lidar: "libgazebo_ros_ray_sensor.so",
         contact: "libgazebo_ros_bumper.so",
         force_torque: "libgazebo_ros_ft_sensor.so",
