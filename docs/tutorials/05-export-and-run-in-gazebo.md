@@ -136,8 +136,14 @@ ros2 topic pub --once /velocity_controller/commands std_msgs/msg/Float64MultiArr
 ros2 topic pub --once /position_controller/commands std_msgs/msg/Float64MultiArray "{data: [0.5, -0.3]}"
 ```
 
-For proper driving, swap the velocity group for a `diff_drive_controller` in
-`controllers.yaml`; the joint names and wheel radius you need are in the URDF.
+For proper driving, set **Robot → Export → Base** to **diff_drive_controller** before
+exporting. The wheels, their separation and radius are taken from the model, and you drive with
+`/diff_drive_controller/cmd_vel` (`geometry_msgs/TwistStamped` from Jazzy on):
+
+```bash
+ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args \
+  -r cmd_vel:=/diff_drive_controller/cmd_vel -p stamped:=true
+```
 
 ## Troubleshooting
 

@@ -8,6 +8,13 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- Opening a `.xacro` runs the system `xacro` (ROS 2 sourced), so macros, arguments, includes
+  and `$(find pkg)` resolve. Meshes a URDF points to on disk (`file://`, `package://` in a
+  source checkout, relative paths) load without selecting them.
+- Gazebo sensors in `<gazebo reference>` blocks are imported (lidar, camera, depth and RGB-D
+  camera, IMU, contact, force-torque), and a new RGB-D camera sensor type.
+- Export option for a `diff_drive_controller` on differential and skid-steer bases.
+- Optional MCP access token (`Authorization: Bearer`).
 - Component library: parametric shapes, structural parts, actuators, wheels, sensors,
   electronics and ready-made assemblies, inserted as links with joints and drives.
 - Sample gallery: open-source robots and environments downloaded on demand from their
@@ -38,6 +45,11 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- URDFs that repeat a material on every visual (xacro output) imported duplicates that made
+  the exported URDF fail `check_urdf` and `robot_state_publisher`.
+- A massless root frame (such as `base_footprint`) is exported without inertia, which KDL
+  does not support.
+- No geometry warnings for pure frames such as `camera_optical_frame`.
 - Physics preview: joint limits were not applied and servos could not hold position against
   gravity. Motors are now force-based with gains derived from each joint's effort limit.
 - URDF import gave links without `<inertial>` a 0.1 kg default mass, shifting the centre of
