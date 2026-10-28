@@ -7,6 +7,7 @@ import { exists, mkdir, readDir, readFile, readTextFile, writeFile } from "@taur
 import { appDataDir, join } from "@tauri-apps/api/path";
 import { openPath, openUrl } from "@tauri-apps/plugin-opener";
 import { platform as osPlatform } from "@tauri-apps/plugin-os";
+import { invoke } from "@tauri-apps/api/core";
 
 export interface PickedFile {
   name: string;
@@ -41,6 +42,22 @@ export function baseName(path: string): string {
 export async function readPath(path: string): Promise<PickedFile> {
   requireTauri();
   return { name: baseName(path), path, bytes: await readFile(path) };
+}
+
+/** The file at `path`, or null when it does not exist or cannot be read. */
+export async function readIfExists(path: string): Promise<PickedFile | null> {
+  requireTauri();
+  try {
+    return (await exists(path)) ? await readPath(path) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Run the system `xacro` on a file (desktop, with ROS 2 installed and sourced). */
+export async function expandXacro(path: string, args: string[] = []): Promise<string> {
+  requireTauri();
+  return invoke<string>("xacro_expand", { path, args });
 }
 
 export async function pickFiles(filters: FileFilter[], multiple = true): Promise<PickedFile[]> {

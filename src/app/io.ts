@@ -27,6 +27,8 @@ import { textureStore } from "@/store/textureStore";
 import { useSettings } from "@/store/settings";
 import {
   baseName,
+  expandXacro,
+  readIfExists,
   pickDirectory,
   pickFiles,
   saveBytes,
@@ -35,6 +37,9 @@ import {
 } from "@/platform";
 import { createMeshAsset, importPartsIn, type ImportLayout, type ImportPart } from "./actions";
 import { pluginImporters } from "@/plugins/host";
+import { diffDriveFor } from "./diffDrive";
+import { meshPathCandidates, meshUris } from "./meshPaths";
+import { loadMesh } from "@/core/mesh/loaders";
 
 export const IMPORT_FILTERS = [
   {
@@ -44,7 +49,7 @@ export const IMPORT_FILTERS = [
   { name: "STEP", extensions: ["step", "stp"] },
   { name: "IGES", extensions: ["iges", "igs"] },
   { name: "STL", extensions: ["stl"] },
-  { name: "URDF", extensions: ["urdf"] },
+  { name: "URDF and xacro", extensions: ["urdf", "xacro"] },
   { name: "URDF Forge project", extensions: [PROJECT_EXT] },
 ];
 
@@ -148,7 +153,7 @@ export function commitImport(p: PendingImport, selected: boolean[]): string[] {
 /** Route picked or dropped files to the right importer. */
 export async function importFiles(files: PickedFile[]): Promise<void> {
   const urdfs = files.filter((f) => /\.(urdf|xacro)$/i.test(f.name));
-  const meshes = files.filter((f) => /\.stl$/i.test(f.name));
+  const meshes = files.filter((f) => /\.(stl|dae|obj)$/i.test(f.name));
   for (const f of files) {
     try {
       if (f.name.toLowerCase().endsWith(`.${PROJECT_EXT}`)) {
@@ -156,10 +161,10 @@ export async function importFiles(files: PickedFile[]): Promise<void> {
         continue;
       }
       if (/\.(urdf|xacro)$/i.test(f.name)) {
-        importUrdfFile(f, meshes);
+        await importUrdfFile(f, meshes);
         continue;
       }
-      if (urdfs.length && /\.stl$/i.test(f.name)) continue; // consumed by the URDF import
+      if (urdfs.length && /\.(stl|dae|obj)$/i.test(f.name)) continue; // consumed by the URDF import
       const plugin = pluginImporters().find((imp) =>
         imp.extensions.some((e) => f.name.toLowerCase().endsWith(`.${e}`)),
       );
@@ -186,32 +191,60 @@ export async function importFiles(files: PickedFile[]): Promise<void> {
   }
 }
 
-function importUrdfFile(f: PickedFile, siblings: PickedFile[]) {
-  const xml = new TextDecoder().decode(f.bytes);
-  if (/<xacro:/.test(xml) && /\$\{|\$\(/.test(xml))
-    app().toast(
-      "xacro macros and arguments are not expanded; run xacro first for a faithful import.",
-      "warning",
-    );
-  const staged = newModel();
+async function importUrdfFile(f: PickedFile, siblings: PickedFile[]) {
+  let xml = new TextDecoder().decode(f.bytes);
+  const macros = /<xacro:/.test(xml) && /\$\{|\$\(/.test(xml);
+  if (macros || /\.xacro$/i.test(f.name)) {
+    try {
+      if (!f.path) throw new Error("The file has no path on disk.");
+      xml = await expandXacro(f.path);
+    } catch (e) {
+      if (macros)
+        app().toast(
+          `${e instanceof Error ? e.message : String(e)} Opening ${f.name} without expanding it: macros and arguments are ignored.`,
+          "warning",
+        );
+    }
+  }
   const byName = new Map(siblings.map((s) => [s.name.toLowerCase(), s]));
+  // Meshes the URDF points to on disk: file:// URIs (xacro output), package:// inside a source
+  // checkout, and paths relative to the URDF. Files picked alongside the URDF come first.
+  const byUri = new Map<string, PickedFile>();
+  if (f.path)
+    for (const uri of meshUris(xml)) {
+      if (byName.has(baseName(uri).toLowerCase())) continue;
+      for (const p of meshPathCandidates(uri, f.path)) {
+        const file = await readIfExists(p);
+        if (file) {
+          byUri.set(uri, file);
+          break;
+        }
+      }
+    }
+  const staged = newModel();
   const created = new Map<string, string>();
   const { model, missing } = importUrdf(xml, (uri) => {
-    const file = byName.get(baseName(uri).toLowerCase());
+    const file = byName.get(baseName(uri).toLowerCase()) ?? byUri.get(uri);
     if (!file) return undefined;
-    if (!created.has(file.name)) {
-      const pos = parseStl(file.bytes).positions;
+    const key = file.path || file.name;
+    if (!created.has(key)) {
+      let pos: Float32Array;
+      try {
+        pos = loadMesh(file.name, file.bytes).positions;
+      } catch {
+        return undefined;
+      }
       created.set(
-        file.name,
+        key,
         createMeshAsset(staged, file.name.replace(/\.[^.]+$/, ""), pos, "stl", file.name).id,
       );
     }
-    return staged.meshes.find((m) => m.id === created.get(file.name));
+    return staged.meshes.find((m) => m.id === created.get(key));
   });
   app().setModel(model, { dirty: true });
   app().toast(
     missing.length
-      ? `Imported ${model.links.length} links. ${missing.length} mesh file(s) were not selected and are shown as boxes. Select the meshes together with the URDF to include them.`
+      ? `Imported ${model.links.length} links. ${missing.length} mesh file(s) were not found and are shown as boxes. Select the meshes together with the URDF to include them.`
       : `Imported ${model.links.length} links from ${f.name}`,
     missing.length ? "warning" : "success",
   );
@@ -288,6 +321,7 @@ export function packageFiles(model: RobotModel) {
     environment: app().environment,
     textures: textureStore.snapshot(),
     meshPositions: meshStore.get,
+    diffDrive: diffDriveFor(model),
   });
 }
 

@@ -1,4 +1,5 @@
 mod mcp;
+mod xacro;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -15,6 +16,7 @@ pub fn run() {
             mcp::mcp_status,
             mcp::mcp_respond,
             mcp::mcp_notify_tools_changed,
+            xacro::xacro_expand,
         ])
         .run(tauri::generate_context!())
         .expect("error while running URDF Forge");

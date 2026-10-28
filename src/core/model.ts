@@ -219,6 +219,8 @@ export interface ExportSettings {
   ros2Control: boolean;
   /** "auto": velocity for wheels and continuous joints, position for everything else. */
   commandInterface: "auto" | "position" | "velocity" | "effort";
+  /** "diff_drive": drive wheels go to a diff_drive_controller instead of a joint group. */
+  baseController: "none" | "diff_drive";
   version: string;
   description: string;
   maintainer: string;
@@ -320,6 +322,7 @@ export function newModel(robot = "my_robot"): RobotModel {
       defaultTarget: "jazzy-harmonic",
       ros2Control: false,
       commandInterface: "auto",
+      baseController: "none",
       version: "0.1.0",
       description: "",
       maintainer: "maintainer",

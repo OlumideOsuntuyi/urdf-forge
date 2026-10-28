@@ -4,6 +4,7 @@ import { app, useApp } from "@/store/app";
 import { TARGETS, TARGET_IDS, targetLabel, type TargetId } from "@/core/ros/targets";
 import { validate } from "@/core/validate";
 import { exportPackage } from "@/app/io";
+import { diffDriveFor } from "@/app/diffDrive";
 import { buildPackage } from "@/core/ros/package";
 import { pluginExporters } from "@/plugins/host";
 import { meshStore } from "@/store/meshStore";
@@ -16,7 +17,10 @@ export function ExportDialog() {
   const ex = model.export;
   const [file, setFile] = useState<string | null>(null);
   // Preview without serialising meshes; the real export adds one STL per part.
-  const files = useMemo(() => buildPackage(model, new Map()), [model]);
+  const files = useMemo(
+    () => buildPackage(model, new Map(), { diffDrive: diffDriveFor(model) }),
+    [model],
+  );
   const names = [...files.keys()].sort();
   const total = files.size + model.meshes.length;
   const shown =
