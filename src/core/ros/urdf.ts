@@ -86,6 +86,46 @@ function componentName(link: Link, c: Visual | Collision, kind: string, i: numbe
   return safeName(c.name || `${link.name}_${kind}${i ? `_${i + 1}` : ""}`, kind);
 }
 
+/** True when the URDF to SDF conversion merges this link into its parent (fixed joint). */
+function lumpedIntoParent(model: RobotModel, L: Link): boolean {
+  return (
+    hasJoint(model, L) && L.joint.type === "fixed" && linkById(model, L.parentId)!.name !== "world"
+  );
+}
+
+/**
+ * The name each collision ends up with in Gazebo. Converting the URDF to SDF (sdformat's
+ * parser_urdf.cc, the same from SDFormat 9 to 15) merges links on fixed joints into their
+ * parent and renames collisions, so anything that names a collision (contact sensors) must use
+ * the final names. The rules, from that converter:
+ * - a link's collisions are its own, then each fixed child's (depth first, children in
+ *   joint-name order, as urdfdom keeps joints in a sorted map);
+ * - the k-th one is named `<urdf name>_collision`, plus `_<k>` for k > 0;
+ * - a name that does not start with the link's name gets `<link>_fixed_joint_lump__` in front.
+ */
+export function gazeboCollisionNames(model: RobotModel): Map<string, string> {
+  const out = new Map<string, string>();
+  const byJoint = (a: Link, b: Link) => {
+    const [x, y] = [jointName(a), jointName(b)];
+    return x < y ? -1 : x > y ? 1 : 0;
+  };
+  const merged = (L: Link): { c: Collision; owner: Link; i: number }[] => [
+    ...L.collisions.map((c, i) => ({ c, owner: L, i })),
+    ...model.links
+      .filter((k) => k.parentId === L.id && lumpedIntoParent(model, k))
+      .sort(byJoint)
+      .flatMap(merged),
+  ];
+  for (const L of model.links) {
+    if (lumpedIntoParent(model, L)) continue;
+    merged(L).forEach(({ c, owner, i }, k) => {
+      const n = `${componentName(owner, c, "collision", i)}_collision${k ? `_${k}` : ""}`;
+      out.set(c.id, n.startsWith(L.name) ? n : `${L.name}_fixed_joint_lump__${n}`);
+    });
+  }
+  return out;
+}
+
 /**
  * The name each material is written under. URDF material names are global, so two materials
  * that share a name (easy to do in the editor) get `_2`, `_3`... instead of clashing.
@@ -190,8 +230,11 @@ export function sensorName(L: Link, s: Sensor): string {
   return safeName(s.name || `${L.name}_${s.type}`, "sensor");
 }
 
-function sensorXml(L: Link, T: Target): string[] {
+function sensorXml(model: RobotModel, L: Link, T: Target): string[] {
   const out: string[] = [];
+  const collisionNames = L.sensors.some((s) => s.type === "contact")
+    ? gazeboCollisionNames(model)
+    : null;
   for (const s of L.sensors) {
     const nm = sensorName(L, s);
     const topic = sensorTopic(L, s);
@@ -232,9 +275,11 @@ function sensorXml(L: Link, T: Target): string[] {
       );
       out.push(`      </${tag}>`);
     } else if (s.type === "contact" && L.collisions.length) {
-      out.push(
-        `      <contact><collision>${xmlEscape(componentName(L, L.collisions[0], "collision", 0))}</collision></contact>`,
-      );
+      // Every collision of the link, under the name Gazebo gives it after merging fixed links.
+      out.push("      <contact>");
+      for (const c of L.collisions)
+        out.push(`        <collision>${xmlEscape(collisionNames!.get(c.id)!)}</collision>`);
+      out.push("      </contact>");
     }
     if (classic) {
       const plugin = {
@@ -289,7 +334,7 @@ export function gazeboLinkXml(model: RobotModel, L: Link, T: Target): string {
   }
   o.push("      </material>");
   o.push("    </visual>");
-  o.push(...sensorXml(L, T));
+  o.push(...sensorXml(model, L, T));
   o.push("  </gazebo>");
   return o.join("\n");
 }

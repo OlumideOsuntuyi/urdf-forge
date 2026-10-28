@@ -50,6 +50,9 @@ All notable changes to this project are documented here. The format follows
 - A massless root frame (such as `base_footprint`) is exported without inertia, which KDL
   does not support.
 - No geometry warnings for pure frames such as `camera_optical_frame`.
+- Contact sensors named a collision that no longer exists once Gazebo merges fixed-joint
+  links, so they never reported contacts. They now list every collision of their link under
+  the name Gazebo gives it.
 - Physics preview: joint limits were not applied and servos could not hold position against
   gravity. Motors are now force-based with gains derived from each joint's effort limit.
 - URDF import gave links without `<inertial>` a 0.1 kg default mass, shifting the centre of
