@@ -396,6 +396,18 @@ export function hasJoint(model: RobotModel, link: Link): boolean {
   return !!link.parentId && !!linkById(model, link.parentId);
 }
 
+/** Most links weigh far more than this; the URDF importer gives massless frames 1e-6 kg. */
+export const FRAME_MASS = 1e-5;
+
+/**
+ * A pure coordinate frame (base_footprint, camera_optical_frame, ...): no geometry and no
+ * real mass. ROS tools expect these, so they need no geometry warnings and, at the root, no
+ * inertia.
+ */
+export function isFrameLink(link: Link): boolean {
+  return !link.visuals.length && !link.collisions.length && link.inertial.mass <= FRAME_MASS;
+}
+
 export function materialById(model: RobotModel, id: string | null): Material | undefined {
   return id ? model.materials.find((m) => m.id === id) : undefined;
 }

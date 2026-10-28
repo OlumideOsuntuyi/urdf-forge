@@ -63,7 +63,9 @@ export function importUrdf(
     if (!el) return null;
     const mname = el.getAttribute("name") ?? "";
     const color = kid(el, "color");
-    if (!color && matByName.has(mname)) return matByName.get(mname)!;
+    // URDF material names are global: xacro output often repeats the full definition on every
+    // visual that uses it, so reuse the first one rather than creating duplicates.
+    if (mname && matByName.has(mname)) return matByName.get(mname)!;
     const rgba = nums(color?.getAttribute("rgba") ?? null, 4, [0.7, 0.7, 0.7, 1]) as Rgba;
     const m = newMaterial(mname || `material_${model.materials.length + 1}`, rgba);
     model.materials.push(m);

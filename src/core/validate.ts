@@ -1,4 +1,12 @@
-import { ARTICULATED, hasJoint, jointName, meshById, rootLinks, type RobotModel } from "./model";
+import {
+  ARTICULATED,
+  hasJoint,
+  isFrameLink,
+  jointName,
+  meshById,
+  rootLinks,
+  type RobotModel,
+} from "./model";
 
 export type IssueLevel = "error" | "warning";
 
@@ -63,8 +71,9 @@ export function validate(model: RobotModel): Issue[] {
         `${L.name}: a mesh is not watertight, so its computed inertia is approximate.`,
         L.id,
       );
-    if (!L.visuals.length) add("warning", `${L.name}: no visual geometry.`, L.id);
-    if (!L.collisions.length)
+    const frame = isFrameLink(L);
+    if (!L.visuals.length && !frame) add("warning", `${L.name}: no visual geometry.`, L.id);
+    if (!L.collisions.length && !frame)
       add(
         "warning",
         `${L.name}: no collision geometry; it will pass through everything in simulation.`,
