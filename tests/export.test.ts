@@ -146,3 +146,64 @@ describe("validation and inertia", () => {
     expect(ine.mass).toBeCloseTo(4, 4);
   });
 });
+
+describe("ROS URDF conventions", () => {
+  // Shaped like xacro output: a footprint frame and the same inline material on two visuals.
+  const XACRO_STYLE = `<robot name="r">
+    <link name="base_footprint"/>
+    <link name="base_link">
+      <inertial><mass value="1"/><inertia ixx="0.01" iyy="0.01" izz="0.01" ixy="0" ixz="0" iyz="0"/></inertial>
+      <visual><geometry><box size="0.2 0.2 0.1"/></geometry>
+        <material name="dark_gray"><color rgba="0.2 0.2 0.2 1"/></material></visual>
+      <collision><geometry><box size="0.2 0.2 0.1"/></geometry></collision>
+    </link>
+    <link name="wheel">
+      <inertial><mass value="0.1"/><inertia ixx="0.001" iyy="0.001" izz="0.001" ixy="0" ixz="0" iyz="0"/></inertial>
+      <visual><geometry><cylinder radius="0.05" length="0.02"/></geometry>
+        <material name="dark_gray"><color rgba="0.2 0.2 0.2 1"/></material></visual>
+      <collision><geometry><cylinder radius="0.05" length="0.02"/></geometry></collision>
+    </link>
+    <link name="camera_optical_frame"/>
+    <joint name="base_joint" type="fixed"><parent link="base_footprint"/><child link="base_link"/></joint>
+    <joint name="wheel_joint" type="continuous"><parent link="base_link"/><child link="wheel"/><axis xyz="0 1 0"/></joint>
+    <joint name="optical_joint" type="fixed"><parent link="base_link"/><child link="camera_optical_frame"/></joint>
+  </robot>`;
+
+  const topMaterials = (xml: string) =>
+    [...parse(xml).documentElement.children]
+      .filter((c) => c.tagName === "material")
+      .map((m) => m.getAttribute("name"));
+
+  it("imports a repeated inline material once", () => {
+    const { model } = importUrdf(XACRO_STYLE, () => undefined);
+    expect(model.materials.map((m) => m.name)).toEqual(["dark_gray"]);
+    expect(topMaterials(generateUrdf(model, "jazzy-harmonic"))).toEqual(["dark_gray"]);
+  });
+
+  it("never writes two top-level materials with the same name", () => {
+    const { model } = sampleRobot();
+    // Same name as the default material, different colour.
+    model.materials.push({ ...model.materials[0], id: "mat_second", rgba: [1, 0, 0, 1] });
+    model.links[1].visuals[0].materialId = "mat_second";
+    const xml = generateUrdf(model, "jazzy-harmonic");
+    const names = topMaterials(xml);
+    expect(new Set(names).size).toBe(names.length);
+    expect(names).toHaveLength(2);
+  });
+
+  it("writes no inertia on a massless root frame", () => {
+    const { model } = importUrdf(XACRO_STYLE, () => undefined);
+    const doc = parse(generateUrdf(model, "jazzy-harmonic"));
+    const link = (n: string) =>
+      [...doc.getElementsByTagName("link")].find((l) => l.getAttribute("name") === n)!;
+    expect(link("base_footprint").getElementsByTagName("inertial")).toHaveLength(0);
+    expect(link("camera_optical_frame").getElementsByTagName("inertial")).toHaveLength(1);
+    expect(link("base_link").getElementsByTagName("inertial")).toHaveLength(1);
+  });
+
+  it("does not warn about missing geometry on pure frames", () => {
+    const { model } = importUrdf(XACRO_STYLE, () => undefined);
+    const msgs = validate(model).map((i) => i.message);
+    expect(msgs.filter((m) => /base_footprint|camera_optical_frame/.test(m))).toEqual([]);
+  });
+});

@@ -12,11 +12,19 @@ import { loadMesh } from "../src/core/mesh/loaders";
 import { unzipSync } from "fflate";
 import { Window } from "happy-dom";
 
-// Node's own fetch (no browser CORS rules, like the app's HTTP plugin); only DOMParser comes
-// from happy-dom.
-globalThis.DOMParser = new Window().DOMParser as unknown as typeof DOMParser;
+// Node's own fetch (no browser CORS rules, like the app's HTTP plugin); the DOM pieces the mesh
+// loaders use come from happy-dom: DOMParser, plus document (textured Collada files) and Node
+// (Collada parse errors).
+const win = new Window();
+Object.assign(globalThis, { DOMParser: win.DOMParser, document: win.document, Node: win.Node });
 
 const run = !!process.env.NETWORK;
+
+// Valid XML that happy-dom's parser rejects ("Comment not terminated" on a comment containing
+// "</matrix-->"); browser engines, and so the app, read them. Another mesh is checked instead.
+const HAPPY_DOM_UNPARSABLE = new Set([
+  "package://val_description/model/meshes/multisense/head_camera.dae",
+]);
 
 async function exists(url: string): Promise<number> {
   const r = await fetch(url, { headers: { Range: "bytes=0-0" } });
@@ -51,8 +59,9 @@ describe.skipIf(!run)("remote robots", () => {
           .filter(([, st]) => st !== 200 && st !== 206)
           .map(([u, st]) => `${u} -> ${st}`);
         expect(missing, "missing meshes").toEqual([]);
-        if (urls.length) {
-          const first = urls[0][1]!;
+        const parsable = urls.filter(([u]) => !HAPPY_DOM_UNPARSABLE.has(u));
+        if (parsable.length) {
+          const first = parsable[0][1]!;
           const mesh = loadMesh(first, new Uint8Array(await (await fetch(first)).arrayBuffer()));
           expect(mesh.positions.length, first).toBeGreaterThan(0);
         }

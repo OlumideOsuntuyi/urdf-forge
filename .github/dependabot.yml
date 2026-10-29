@@ -12,6 +12,10 @@ updates:
       dev-tooling:
         dependency-type: development
     open-pull-requests-limit: 8
+    ignore:
+      # typescript-eslint does not support TypeScript 7 yet; the bump fails npm ci.
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: cargo
     directory: /src-tauri
     schedule:

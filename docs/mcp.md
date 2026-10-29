@@ -36,6 +36,33 @@ Clients that only support stdio can use the `mcp-remote` bridge:
 
 The settings page has copy buttons for these configurations.
 
+## Access token
+
+Any program on your computer can reach the server while it is on. To accept only the clients
+you choose, turn on **Require a token** under **Settings → AI assistants (MCP)**. Requests then
+need an `Authorization: Bearer <token>` header and get `401` without it. The copy buttons
+include the header once the token is on:
+
+```bash
+claude mcp add --transport http urdf-forge http://127.0.0.1:8765/mcp \
+  --header "Authorization: Bearer <token>"
+```
+
+```json
+{
+  "mcpServers": {
+    "urdf-forge": {
+      "type": "http",
+      "url": "http://127.0.0.1:8765/mcp",
+      "headers": { "Authorization": "Bearer <token>" }
+    }
+  }
+}
+```
+
+With `mcp-remote`, add `"--header", "Authorization:Bearer <token>"` to its arguments. **New
+token** replaces the token and disconnects clients that use the old one.
+
 ## Tools
 
 | Tool                            | What it does                                                                |

@@ -23,6 +23,9 @@ export interface Settings {
   density: "compact" | "comfortable" | "touch";
   mcpEnabled: boolean;
   mcpPort: number;
+  /** Require `Authorization: Bearer <mcpToken>` on every MCP request. */
+  mcpRequireToken: boolean;
+  mcpToken: string;
   enabledPlugins: string[];
   trustedPlugins: string[];
   recentProjects: string[];
@@ -45,6 +48,8 @@ export const useSettings = create<Settings & Actions>()(
       // On by default: loopback only, rejects non-local origins, every edit is undoable.
       mcpEnabled: true,
       mcpPort: 8765,
+      mcpRequireToken: false,
+      mcpToken: "",
       enabledPlugins: [],
       trustedPlugins: [],
       recentProjects: [],
@@ -63,11 +68,15 @@ export const useSettings = create<Settings & Actions>()(
     }),
     {
       name: "urdf-forge.settings",
-      version: 2,
-      // v2: the MCP server became on by default.
+      version: 3,
+      // v2: the MCP server became on by default. v3: optional MCP access token.
       migrate: (state, version) => {
         const s = state as Partial<Settings>;
         if (version < 2) s.mcpEnabled = true;
+        if (version < 3) {
+          s.mcpRequireToken = false;
+          s.mcpToken = "";
+        }
         return s as Settings & Actions;
       },
     },
@@ -81,4 +90,11 @@ export function resolveTheme(theme: string): ThemeInfo {
     return THEMES.find((t) => t.id === (dark ? "forge-dark" : "forge-light"))!;
   }
   return THEMES.find((t) => t.id === theme) ?? THEMES[0];
+}
+
+/** A new random MCP access token (32 hex characters). */
+export function newMcpToken(): string {
+  const b = new Uint8Array(16);
+  crypto.getRandomValues(b);
+  return [...b].map((x) => x.toString(16).padStart(2, "0")).join("");
 }

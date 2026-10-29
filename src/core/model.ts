@@ -111,11 +111,17 @@ export const SENSOR_TYPES = [
   "imu",
   "camera",
   "depth_camera",
+  "rgbd_camera",
   "lidar",
   "contact",
   "force_torque",
 ] as const;
 export type SensorType = (typeof SENSOR_TYPES)[number];
+
+/** Sensors with a camera block (field of view, resolution, clip planes). */
+export function isCameraSensor(type: SensorType): boolean {
+  return type === "camera" || type === "depth_camera" || type === "rgbd_camera";
+}
 
 export interface Sensor {
   id: string;
@@ -213,6 +219,8 @@ export interface ExportSettings {
   ros2Control: boolean;
   /** "auto": velocity for wheels and continuous joints, position for everything else. */
   commandInterface: "auto" | "position" | "velocity" | "effort";
+  /** "diff_drive": drive wheels go to a diff_drive_controller instead of a joint group. */
+  baseController: "none" | "diff_drive";
   version: string;
   description: string;
   maintainer: string;
@@ -314,6 +322,7 @@ export function newModel(robot = "my_robot"): RobotModel {
       defaultTarget: "jazzy-harmonic",
       ros2Control: false,
       commandInterface: "auto",
+      baseController: "none",
       version: "0.1.0",
       description: "",
       maintainer: "maintainer",
@@ -394,6 +403,18 @@ export function isDescendantOrSelf(model: RobotModel, id: string, ancestorId: st
 
 export function hasJoint(model: RobotModel, link: Link): boolean {
   return !!link.parentId && !!linkById(model, link.parentId);
+}
+
+/** Most links weigh far more than this; the URDF importer gives massless frames 1e-6 kg. */
+export const FRAME_MASS = 1e-5;
+
+/**
+ * A pure coordinate frame (base_footprint, camera_optical_frame, ...): no geometry and no
+ * real mass. ROS tools expect these, so they need no geometry warnings and, at the root, no
+ * inertia.
+ */
+export function isFrameLink(link: Link): boolean {
+  return !link.visuals.length && !link.collisions.length && link.inertial.mass <= FRAME_MASS;
 }
 
 export function materialById(model: RobotModel, id: string | null): Material | undefined {

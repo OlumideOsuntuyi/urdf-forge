@@ -2,6 +2,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { isTauri } from "@/platform";
+import { useSettings } from "@/store/settings";
 import { callTool, listTools, onToolsChanged } from "./tools";
 
 interface McpRequest {
@@ -38,7 +39,10 @@ export async function setMcpServer(enabled: boolean, port: number): Promise<McpS
   if (!isTauri())
     return { running: false, port, url: "", error: "Only available in the desktop app." };
   await startMcpBridge();
-  return enabled ? invoke<McpStatus>("mcp_start", { port }) : invoke<McpStatus>("mcp_stop");
+  if (!enabled) return invoke<McpStatus>("mcp_stop");
+  const s = useSettings.getState();
+  const token = s.mcpRequireToken && s.mcpToken ? s.mcpToken : null;
+  return invoke<McpStatus>("mcp_start", { port, token });
 }
 
 export async function mcpStatus(): Promise<McpStatus | null> {

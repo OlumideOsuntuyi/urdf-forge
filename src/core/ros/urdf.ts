@@ -2,12 +2,15 @@
 import {
   ARTICULATED,
   hasJoint,
+  isCameraSensor,
+  isFrameLink,
   jointName,
   linkById,
   materialById,
   meshById,
   orderedLinks,
   safeName,
+  uniqueName,
   type Collision,
   type Geometry,
   type Link,
@@ -83,23 +86,88 @@ function componentName(link: Link, c: Visual | Collision, kind: string, i: numbe
   return safeName(c.name || `${link.name}_${kind}${i ? `_${i + 1}` : ""}`, kind);
 }
 
-export function linkXml(model: RobotModel, L: Link, massExpr?: string): string {
+/** True when the URDF to SDF conversion merges this link into its parent (fixed joint). */
+function lumpedIntoParent(model: RobotModel, L: Link): boolean {
+  return (
+    hasJoint(model, L) && L.joint.type === "fixed" && linkById(model, L.parentId)!.name !== "world"
+  );
+}
+
+/**
+ * The name each collision ends up with in Gazebo. Converting the URDF to SDF (sdformat's
+ * parser_urdf.cc, the same from SDFormat 9 to 15) merges links on fixed joints into their
+ * parent and renames collisions, so anything that names a collision (contact sensors) must use
+ * the final names. The rules, from that converter:
+ * - a link's collisions are its own, then each fixed child's (depth first, children in
+ *   joint-name order, as urdfdom keeps joints in a sorted map);
+ * - the k-th one is named `<urdf name>_collision`, plus `_<k>` for k > 0;
+ * - a name that does not start with the link's name gets `<link>_fixed_joint_lump__` in front.
+ */
+export function gazeboCollisionNames(model: RobotModel): Map<string, string> {
+  const out = new Map<string, string>();
+  const byJoint = (a: Link, b: Link) => {
+    const [x, y] = [jointName(a), jointName(b)];
+    return x < y ? -1 : x > y ? 1 : 0;
+  };
+  const merged = (L: Link): { c: Collision; owner: Link; i: number }[] => [
+    ...L.collisions.map((c, i) => ({ c, owner: L, i })),
+    ...model.links
+      .filter((k) => k.parentId === L.id && lumpedIntoParent(model, k))
+      .sort(byJoint)
+      .flatMap(merged),
+  ];
+  for (const L of model.links) {
+    if (lumpedIntoParent(model, L)) continue;
+    merged(L).forEach(({ c, owner, i }, k) => {
+      const n = `${componentName(owner, c, "collision", i)}_collision${k ? `_${k}` : ""}`;
+      out.set(c.id, n.startsWith(L.name) ? n : `${L.name}_fixed_joint_lump__${n}`);
+    });
+  }
+  return out;
+}
+
+/**
+ * The name each material is written under. URDF material names are global, so two materials
+ * that share a name (easy to do in the editor) get `_2`, `_3`... instead of clashing.
+ */
+export function materialExportNames(model: RobotModel): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const m of model.materials) out.set(m.id, uniqueName(m.name, out.values(), "material"));
+  return out;
+}
+
+/**
+ * KDL (robot_state_publisher) does not support inertia on the root link, so a root that is
+ * only a frame (base_footprint) is written without <inertial>, as hand-written URDFs do.
+ */
+export function omitInertial(model: RobotModel, L: Link): boolean {
+  return !hasJoint(model, L) && isFrameLink(L);
+}
+
+export function linkXml(
+  model: RobotModel,
+  L: Link,
+  massExpr?: string,
+  matNames = materialExportNames(model),
+): string {
   const o = [`  <link name="${xmlEscape(L.name)}">`];
   const ine = L.inertial;
   const I = ine.inertia;
-  o.push("    <inertial>");
-  o.push(originXml({ xyz: ine.com, rpy: [0, 0, 0] }, "      "));
-  o.push(`      <mass value="${massExpr ?? fmt(Math.max(ine.mass, 1e-6))}"/>`);
-  o.push(
-    `      <inertia ixx="${fmt(I.ixx, 10)}" ixy="${fmt(I.ixy, 10)}" ixz="${fmt(I.ixz, 10)}" iyy="${fmt(I.iyy, 10)}" iyz="${fmt(I.iyz, 10)}" izz="${fmt(I.izz, 10)}"/>`,
-  );
-  o.push("    </inertial>");
+  if (!omitInertial(model, L)) {
+    o.push("    <inertial>");
+    o.push(originXml({ xyz: ine.com, rpy: [0, 0, 0] }, "      "));
+    o.push(`      <mass value="${massExpr ?? fmt(Math.max(ine.mass, 1e-6))}"/>`);
+    o.push(
+      `      <inertia ixx="${fmt(I.ixx, 10)}" ixy="${fmt(I.ixy, 10)}" ixz="${fmt(I.ixz, 10)}" iyy="${fmt(I.iyy, 10)}" iyz="${fmt(I.iyz, 10)}" izz="${fmt(I.izz, 10)}"/>`,
+    );
+    o.push("    </inertial>");
+  }
   L.visuals.forEach((v, i) => {
     o.push(`    <visual name="${xmlEscape(componentName(L, v, "visual", i))}">`);
     o.push(originXml(v.origin, "      "));
     o.push(geometryXml(model, v.geometry, "      ", v.materialId));
     const mat = materialById(model, v.materialId);
-    if (mat) o.push(`      <material name="${xmlEscape(safeName(mat.name, "material"))}"/>`);
+    if (mat) o.push(`      <material name="${xmlEscape(matNames.get(mat.id)!)}"/>`);
     o.push("    </visual>");
   });
   L.collisions.forEach((c, i) => {
@@ -147,9 +215,14 @@ export function sensorTopic(L: Link, s: Sensor): string {
   if (s.topic) return s.topic;
   const nm = sensorName(L, s);
   return (
-    { imu: "imu", lidar: "scan", camera: `${nm}/image`, depth_camera: `${nm}/depth_image` }[
-      s.type as string
-    ] ?? nm
+    {
+      imu: "imu",
+      lidar: "scan",
+      camera: `${nm}/image`,
+      depth_camera: `${nm}/depth_image`,
+      // rgbd_camera publishes <topic>/image, /depth_image, /points and /camera_info.
+      rgbd_camera: nm,
+    }[s.type as string] ?? nm
   );
 }
 
@@ -157,8 +230,11 @@ export function sensorName(L: Link, s: Sensor): string {
   return safeName(s.name || `${L.name}_${s.type}`, "sensor");
 }
 
-function sensorXml(L: Link, T: Target): string[] {
+function sensorXml(model: RobotModel, L: Link, T: Target): string[] {
   const out: string[] = [];
+  const collisionNames = L.sensors.some((s) => s.type === "contact")
+    ? gazeboCollisionNames(model)
+    : null;
   for (const s of L.sensors) {
     const nm = sensorName(L, s);
     const topic = sensorTopic(L, s);
@@ -168,7 +244,7 @@ function sensorXml(L: Link, T: Target): string[] {
         ? classic
           ? "ray"
           : "gpu_lidar"
-        : s.type === "depth_camera"
+        : s.type === "depth_camera" || (s.type === "rgbd_camera" && classic)
           ? classic
             ? "depth"
             : "depth_camera"
@@ -177,7 +253,7 @@ function sensorXml(L: Link, T: Target): string[] {
     out.push(`      <always_on>true</always_on>`);
     out.push(`      <update_rate>${fmt(s.rate, 3)}</update_rate>`);
     out.push(`      <visualize>false</visualize>`);
-    if (s.type === "camera" || s.type === "depth_camera") {
+    if (isCameraSensor(s.type)) {
       out.push("      <camera>");
       out.push(`        <horizontal_fov>${fmt(s.fov ?? 1.047, 5)}</horizontal_fov>`);
       out.push(
@@ -199,15 +275,18 @@ function sensorXml(L: Link, T: Target): string[] {
       );
       out.push(`      </${tag}>`);
     } else if (s.type === "contact" && L.collisions.length) {
-      out.push(
-        `      <contact><collision>${xmlEscape(componentName(L, L.collisions[0], "collision", 0))}</collision></contact>`,
-      );
+      // Every collision of the link, under the name Gazebo gives it after merging fixed links.
+      out.push("      <contact>");
+      for (const c of L.collisions)
+        out.push(`        <collision>${xmlEscape(collisionNames!.get(c.id)!)}</collision>`);
+      out.push("      </contact>");
     }
     if (classic) {
       const plugin = {
         imu: "libgazebo_ros_imu_sensor.so",
         camera: "libgazebo_ros_camera.so",
         depth_camera: "libgazebo_ros_camera.so",
+        rgbd_camera: "libgazebo_ros_camera.so",
         lidar: "libgazebo_ros_ray_sensor.so",
         contact: "libgazebo_ros_bumper.so",
         force_torque: "libgazebo_ros_ft_sensor.so",
@@ -255,7 +334,7 @@ export function gazeboLinkXml(model: RobotModel, L: Link, T: Target): string {
   }
   o.push("      </material>");
   o.push("    </visual>");
-  o.push(...sensorXml(L, T));
+  o.push(...sensorXml(model, L, T));
   o.push("  </gazebo>");
   return o.join("\n");
 }
@@ -341,11 +420,12 @@ export function jointStateXml(model: RobotModel, T: Target): string {
 
 export function materialsXml(model: RobotModel): string[] {
   const used = new Set(model.links.flatMap((l) => l.visuals.map((v) => v.materialId)));
+  const names = materialExportNames(model);
   return model.materials
     .filter((m) => used.has(m.id))
     .map(
       (m) =>
-        `  <material name="${xmlEscape(safeName(m.name, "material"))}"><color rgba="${fmt3(m.rgba, 4)} ${fmt(m.rgba[3], 3)}"/>${
+        `  <material name="${xmlEscape(names.get(m.id)!)}"><color rgba="${fmt3(m.rgba, 4)} ${fmt(m.rgba[3], 3)}"/>${
           m.textures?.maps.color
             ? `<texture filename="${xmlEscape(textureUri(model, m.textures.maps.color))}"/>`
             : ""

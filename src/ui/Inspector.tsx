@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import {
   AlertTriangle,
   Atom,
@@ -22,6 +22,7 @@ import {
   ARTICULATED,
   JOINT_TYPES,
   SENSOR_TYPES,
+  isCameraSensor,
   hasJoint,
   isDescendantOrSelf,
   jointName,
@@ -52,6 +53,7 @@ import {
 import { splitComponents } from "@/core/mesh/ops";
 import { meshStore } from "@/store/meshStore";
 import { runCommand } from "@/commands/registry";
+import { diffDriveFor } from "@/app/diffDrive";
 import {
   Field,
   NumberField,
@@ -518,7 +520,7 @@ function LinkInspector({
                 onChange={(v) => upd((x) => (x.sensors[i].rate = v), `s${i}r`)}
               />
             </Field>
-            {(s.type === "camera" || s.type === "depth_camera") && (
+            {isCameraSensor(s.type) && (
               <>
                 <Field label="Resolution">
                   <div className="vec3" style={{ gridTemplateColumns: "1fr 1fr" }}>
@@ -1095,6 +1097,7 @@ function RobotInspector({ model }: { model: RobotModel }) {
             />
           </Field>
         )}
+        {ex.ros2Control && <BaseControllerField />}
         <button className="btn sm" onClick={() => runCommand("file.export")}>
           Export settings and preview…
         </button>
@@ -1151,6 +1154,32 @@ const hex = (rgba: number[]) =>
         .padStart(2, "0"),
     )
     .join("")}`;
+
+/** ros2_control base controller: a diff_drive_controller when the robot has left and right wheels. */
+function BaseControllerField() {
+  const model = useApp((s) => s.model);
+  const dd = useMemo(() => diffDriveFor(model), [model]);
+  return (
+    <Field label="Base">
+      <div style={{ display: "grid", gap: 4 }}>
+        <Select
+          value={dd ? model.export.baseController : "none"}
+          disabled={!dd}
+          options={[
+            { value: "none", label: "Joint group controllers" },
+            { value: "diff_drive", label: "diff_drive_controller" },
+          ]}
+          onChange={(v) => edit((m) => (m.export.baseController = v))}
+        />
+        <span className="dim">
+          {dd
+            ? `Wheels: ${dd.left.join(", ")} | ${dd.right.join(", ")}`
+            : "Needs drive wheels on both sides (no steering, mecanum or omni)."}
+        </span>
+      </div>
+    </Field>
+  );
+}
 
 function MaterialEditor({ mt }: { mt: Material }) {
   const [open, setOpen] = useState(false);

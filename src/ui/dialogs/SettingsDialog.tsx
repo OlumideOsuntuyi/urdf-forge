@@ -12,7 +12,7 @@ import {
   Settings2,
 } from "lucide-react";
 import { app } from "@/store/app";
-import { THEMES, useSettings } from "@/store/settings";
+import { THEMES, newMcpToken, useSettings } from "@/store/settings";
 import { loadPlugins, setPluginEnabled, usePlugins } from "@/plugins/host";
 import { mcpStatus, setMcpServer, type McpStatus } from "@/mcp/bridge";
 import { listTools } from "@/mcp/tools";
@@ -244,7 +244,10 @@ function Plugins() {
 function Mcp() {
   const enabled = useSettings((s) => s.mcpEnabled);
   const port = useSettings((s) => s.mcpPort);
+  const requireToken = useSettings((s) => s.mcpRequireToken);
+  const token = useSettings((s) => s.mcpToken);
   const update = useSettings((s) => s.update);
+  const [showToken, setShowToken] = useState(false);
   const [status, setStatus] = useState<McpStatus | null>(null);
   useEffect(() => {
     mcpStatus()
@@ -252,16 +255,44 @@ function Mcp() {
       .catch(() => {});
   }, [enabled, port]);
   const url = `http://127.0.0.1:${port}/mcp`;
+  const auth = requireToken && token ? `Bearer ${token}` : null;
   const snippets: [string, string][] = [
-    ["Claude Code", `claude mcp add --transport http urdf-forge ${url}`],
+    [
+      "Claude Code",
+      `claude mcp add --transport http urdf-forge ${url}${auth ? ` --header "Authorization: ${auth}"` : ""}`,
+    ],
     [
       "JSON config (Cursor, VS Code, others)",
-      JSON.stringify({ mcpServers: { "urdf-forge": { type: "http", url } } }, null, 2),
+      JSON.stringify(
+        {
+          mcpServers: {
+            "urdf-forge": {
+              type: "http",
+              url,
+              ...(auth ? { headers: { Authorization: auth } } : {}),
+            },
+          },
+        },
+        null,
+        2,
+      ),
     ],
     [
       "Clients that only speak stdio",
       JSON.stringify(
-        { mcpServers: { "urdf-forge": { command: "npx", args: ["-y", "mcp-remote", url] } } },
+        {
+          mcpServers: {
+            "urdf-forge": {
+              command: "npx",
+              args: [
+                "-y",
+                "mcp-remote",
+                url,
+                ...(auth ? ["--header", `Authorization:${auth}`] : []),
+              ],
+            },
+          },
+        },
         null,
         2,
       ),
@@ -314,6 +345,45 @@ function Mcp() {
               if (enabled) setMcpServer(true, Math.round(v)).then(setStatus);
             }}
           />
+        </div>
+      </Field>
+      <Field label="Access token">
+        <div className="col" style={{ gap: 6 }}>
+          <Toggle
+            checked={requireToken}
+            onChange={(on) =>
+              update(
+                on && !token
+                  ? { mcpRequireToken: on, mcpToken: newMcpToken() }
+                  : { mcpRequireToken: on },
+              )
+            }
+            disabled={!isTauri()}
+            label="Require a token"
+          />
+          {requireToken && (
+            <div className="row">
+              <code className="grow">{showToken ? token : "•".repeat(16)}</code>
+              <button className="btn sm ghost" onClick={() => setShowToken(!showToken)}>
+                {showToken ? "Hide" : "Show"}
+              </button>
+              <button
+                className="btn sm ghost"
+                onClick={() =>
+                  navigator.clipboard.writeText(token).then(() => app().toast("Copied", "success"))
+                }
+              >
+                <Copy size={13} /> Copy
+              </button>
+              <button className="btn sm ghost" onClick={() => update({ mcpToken: newMcpToken() })}>
+                New token
+              </button>
+            </div>
+          )}
+          <span className="dim">
+            Other programs on this computer can reach the server. With a token, only clients you
+            give it to can use it. Changing it disconnects existing clients.
+          </span>
         </div>
       </Field>
       <b>Connect a client</b>
