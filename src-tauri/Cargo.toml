@@ -1,6 +1,6 @@
 [package]
 name = "urdf-forge"
-version = "0.1.0"
+version = "0.2.0"
 description = "Turn STEP and STL CAD models into ROS 2 robot description packages."
 authors = ["URDF Forge contributors"]
 license = "Apache-2.0"

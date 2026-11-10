@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-10
+
 ### Added
 
 - Opening a `.xacro` runs the system `xacro` (ROS 2 sourced), so macros, arguments, includes
@@ -60,6 +62,8 @@ All notable changes to this project are documented here. The format follows
 - URDF continuous joints without `<limit>` were capped at 2 rad/s; they now have no practical
   velocity limit, so imported wheeled robots drive at full speed.
 - Overlays and frames were sized wrongly for meshes modelled in millimetres with a 0.001 scale.
+- STEP files too large for the built-in importer's 2 GB of memory imported with no geometry
+  and no explanation. The import now fails with a message suggesting smaller STEP or STL files.
 
 ## [0.1.0] - 2026-10-24
 
@@ -92,5 +96,6 @@ Tauri application.
 - Six themes, three densities, command palette and keyboard shortcuts.
 - Builds for Windows, macOS, Linux and Android.
 
-[Unreleased]: https://github.com/OlumideOsuntuyi/urdf-forge/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/OlumideOsuntuyi/urdf-forge/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/OlumideOsuntuyi/urdf-forge/releases/tag/v0.2.0
 [0.1.0]: https://github.com/OlumideOsuntuyi/urdf-forge/releases/tag/v0.1.0
