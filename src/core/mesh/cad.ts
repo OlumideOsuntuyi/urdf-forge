@@ -101,5 +101,14 @@ export function partsFromOcct(result: OcctResult, fallbackName: string, unitScal
     node.children.forEach((c) => walk(c, here));
   };
   walk(result.root, []);
+  // OpenCascade's WebAssembly build has 2 GB of memory. A large file can use it all, and then
+  // every face fails to mesh while the read still reports success.
+  if (!parts.length && result.meshes.length)
+    throw new Error(
+      `OpenCascade read the file but could not triangulate any of its ${result.meshes.length} bodies. ` +
+        "This usually means it is too large for the built-in importer, which is limited to 2 GB of " +
+        "memory. Export it from your CAD tool as several smaller STEP files (one per sub-assembly) " +
+        "or as STL files, one per body.",
+    );
   return parts;
 }

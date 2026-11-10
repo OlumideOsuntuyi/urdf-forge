@@ -32,6 +32,18 @@ describe("STEP import", () => {
     expect(parts.length).toBeGreaterThan(5);
     expect(new Set(parts.map((p) => p.name)).size).toBe(parts.length);
   }, 60_000);
+
+  // What OpenCascade returns when it runs out of memory on a large file: success, but every
+  // body is empty.
+  it("reports bodies that could not be triangulated instead of no geometry", () => {
+    const empty = { name: "body", attributes: { position: { array: [] } }, index: { array: [] } };
+    const result: OcctResult = {
+      success: true,
+      root: { name: "bin", meshes: [0, 1], children: [] },
+      meshes: [empty, empty],
+    };
+    expect(() => partsFromOcct(result, "bin")).toThrow(/could not triangulate any of its 2 bodies/);
+  });
 });
 
 describe("project files", () => {
