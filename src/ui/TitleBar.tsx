@@ -20,6 +20,10 @@ const MENUS: Record<string, MenuEntry[]> = {
     "file.exportZip",
     "file.exportUrdf",
     "file.exportSdf",
+    "-",
+    "file.exportIsaac",
+    "file.exportIsaacFolder",
+    "file.exportIsaacUsd",
   ],
   Edit: [
     "edit.undo",

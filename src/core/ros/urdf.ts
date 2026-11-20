@@ -58,16 +58,20 @@ export function texturedMeshFile(stlFile: string, tile: number): string {
   return `${stlFile.replace(/\.stl$/i, "")}_uv${Math.round(tile * 1000)}mm.obj`;
 }
 
+/** Maps a mesh file name to the filename attribute written in the URDF. */
+export type MeshRef = (model: RobotModel, file: string) => string;
+
 function geometryXml(
   model: RobotModel,
   g: Geometry,
   ind: string,
   materialId: string | null = null,
+  ref: MeshRef = meshUri,
 ): string {
   switch (g.type) {
     case "mesh": {
       const file = meshFileFor(model, g.meshId, materialId);
-      return `${ind}<geometry><mesh filename="${xmlEscape(meshUri(model, file))}" scale="${fmt3(g.scale)}"/></geometry>`;
+      return `${ind}<geometry><mesh filename="${xmlEscape(ref(model, file))}" scale="${fmt3(g.scale)}"/></geometry>`;
     }
     case "box":
       return `${ind}<geometry><box size="${fmt3(g.size)}"/></geometry>`;
@@ -144,16 +148,24 @@ export function omitInertial(model: RobotModel, L: Link): boolean {
   return !hasJoint(model, L) && isFrameLink(L);
 }
 
+export interface LinkXmlOptions {
+  /** Mesh filename attribute; defaults to package:// URIs. */
+  meshRef?: MeshRef;
+  /** Write <inertial> even for a massless root frame (simulators other than ROS need it). */
+  alwaysInertial?: boolean;
+}
+
 export function linkXml(
   model: RobotModel,
   L: Link,
   massExpr?: string,
   matNames = materialExportNames(model),
+  opts: LinkXmlOptions = {},
 ): string {
   const o = [`  <link name="${xmlEscape(L.name)}">`];
   const ine = L.inertial;
   const I = ine.inertia;
-  if (!omitInertial(model, L)) {
+  if (opts.alwaysInertial || !omitInertial(model, L)) {
     o.push("    <inertial>");
     o.push(originXml({ xyz: ine.com, rpy: [0, 0, 0] }, "      "));
     o.push(`      <mass value="${massExpr ?? fmt(Math.max(ine.mass, 1e-6))}"/>`);
@@ -165,7 +177,7 @@ export function linkXml(
   L.visuals.forEach((v, i) => {
     o.push(`    <visual name="${xmlEscape(componentName(L, v, "visual", i))}">`);
     o.push(originXml(v.origin, "      "));
-    o.push(geometryXml(model, v.geometry, "      ", v.materialId));
+    o.push(geometryXml(model, v.geometry, "      ", v.materialId, opts.meshRef));
     const mat = materialById(model, v.materialId);
     if (mat) o.push(`      <material name="${xmlEscape(matNames.get(mat.id)!)}"/>`);
     o.push("    </visual>");
@@ -173,7 +185,7 @@ export function linkXml(
   L.collisions.forEach((c, i) => {
     o.push(`    <collision name="${xmlEscape(componentName(L, c, "collision", i))}">`);
     o.push(originXml(c.origin, "      "));
-    o.push(geometryXml(model, c.geometry, "      "));
+    o.push(geometryXml(model, c.geometry, "      ", null, opts.meshRef));
     o.push("    </collision>");
   });
   o.push("  </link>");

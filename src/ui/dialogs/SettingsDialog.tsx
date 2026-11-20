@@ -18,7 +18,8 @@ import { mcpStatus, setMcpServer, type McpStatus } from "@/mcp/bridge";
 import { listTools } from "@/mcp/tools";
 import { isTauri, openExternal, openFolder, pluginsDir } from "@/platform";
 import { Dialog } from "./Dialog";
-import { CheckRow, Field, NumberField, Segmented, Toggle } from "../controls";
+import { CheckRow, Field, NumberField, Segmented, TextField, Toggle } from "../controls";
+import { DEFAULT_ISAACLAB_PATH } from "@/core/isaac/export";
 
 type Tab = "appearance" | "general" | "plugins" | "mcp" | "about";
 
@@ -144,6 +145,17 @@ function General() {
       <CheckRow checked={s.showWelcome} onChange={(v) => s.update({ showWelcome: v })}>
         Show the welcome card when the robot is empty
       </CheckRow>
+      <Field
+        label="Isaac Lab folder"
+        hint="The Isaac Lab 3 checkout (with its uv environment) used to convert Isaac exports to USD."
+      >
+        <TextField
+          value={s.isaacLabPath}
+          onCommit={(v) => s.update({ isaacLabPath: v.trim() })}
+          placeholder={DEFAULT_ISAACLAB_PATH}
+          mono
+        />
+      </Field>
       <div className="callout info">
         <Info size={14} />
         <span>

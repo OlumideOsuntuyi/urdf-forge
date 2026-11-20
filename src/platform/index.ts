@@ -7,7 +7,7 @@ import { exists, mkdir, readDir, readFile, readTextFile, writeFile } from "@taur
 import { appDataDir, join } from "@tauri-apps/api/path";
 import { openPath, openUrl } from "@tauri-apps/plugin-opener";
 import { platform as osPlatform } from "@tauri-apps/plugin-os";
-import { invoke } from "@tauri-apps/api/core";
+import { Channel, invoke } from "@tauri-apps/api/core";
 
 export interface PickedFile {
   name: string;
@@ -58,6 +58,55 @@ export async function readIfExists(path: string): Promise<PickedFile | null> {
 export async function expandXacro(path: string, args: string[] = []): Promise<string> {
   requireTauri();
   return invoke<string>("xacro_expand", { path, args });
+}
+
+export interface IsaacLabCheck {
+  /** The checkout has Isaac Lab's convert_urdf.py and uv runs. */
+  ok: boolean;
+  /** Why it cannot convert, for the user. */
+  reason?: string | null;
+  uv?: string | null;
+}
+
+/** Whether the Isaac Lab checkout at `path` can convert URDF to USD (desktop only). */
+export async function checkIsaacLab(path: string): Promise<IsaacLabCheck> {
+  if (!isTauri() || isMobile())
+    return {
+      ok: false,
+      reason: "Converting to USD needs the desktop app with Isaac Lab installed.",
+    };
+  return invoke<IsaacLabCheck>("isaac_check", { path });
+}
+
+export interface ProcessLine {
+  stream: "stdout" | "stderr";
+  text: string;
+}
+
+/**
+ * Run the convert_to_usd script of an Isaac export folder against an Isaac Lab checkout.
+ * Output arrives line by line through `onLine`; resolves with the exit code.
+ */
+export async function runIsaacConvert(
+  dir: string,
+  isaacLab: string,
+  onLine: (l: ProcessLine) => void,
+): Promise<number> {
+  requireTauri();
+  const onOutput = new Channel<ProcessLine>();
+  onOutput.onmessage = onLine;
+  return invoke<number>("isaac_convert", { dir, isaacLab, onOutput });
+}
+
+/** Stop a running conversion. */
+export async function cancelIsaacConvert(): Promise<boolean> {
+  return isTauri() ? invoke<boolean>("isaac_cancel") : false;
+}
+
+/** Join path segments with the separator the base path uses. */
+export function joinPath(base: string, ...parts: string[]): string {
+  const sep = base.includes("\\") && !base.includes("/") ? "\\" : "/";
+  return [base.replace(/[\\/]+$/, ""), ...parts].join(sep);
 }
 
 export async function pickFiles(filters: FileFilter[], multiple = true): Promise<PickedFile[]> {

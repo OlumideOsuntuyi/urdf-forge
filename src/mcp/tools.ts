@@ -34,6 +34,27 @@ import { PART_LIBRARY, defaults, findPart, type Params } from "@/core/parts";
 import { PROCEDURAL_ENVS } from "@/core/env/procedural";
 import { applyBuiltinEnvironment, openSample } from "@/samples/open";
 import { SAMPLES } from "@/samples/catalog";
+import { isaacFolderName, isaacPaths } from "@/core/isaac/export";
+import {
+  convertIsaacFolder,
+  isaacFiles,
+  useIsaacConversion,
+  writeIsaacExport,
+  type IsaacConversion,
+} from "@/app/isaac";
+
+/** MCP calls time out after five minutes; a first USD conversion can take longer. */
+const CONVERT_WAIT_MS = 240_000;
+
+function conversionReport(c: IsaacConversion) {
+  return {
+    status: c.status,
+    folder: c.folder,
+    usd: c.usd,
+    error: c.error,
+    output_tail: c.lines.slice(-40).map((l) => l.text),
+  };
+}
 
 const tools = new Map<string, McpTool>();
 let toolsChanged: () => void = () => {};
@@ -396,6 +417,50 @@ export function registerBuiltinTools(screenshot: () => string | null) {
           : app().model.export.defaultTarget;
       return generateUrdf(app().model, t);
     },
+  });
+
+  add({
+    name: "export_isaac",
+    description:
+      "Export the robot for NVIDIA Isaac Sim / Isaac Lab: a URDF with mesh paths relative to it, an Isaac Lab ArticulationCfg (initial pose, actuator groups from joint types and limits) and USD conversion scripts. Without `directory`, returns the generated cfg and URDF. With it, writes <directory>/<robot>_isaac; `convert` then runs Isaac Lab's convert_urdf.py (from the Isaac Lab folder in Settings) and waits up to 4 minutes; poll isaac_conversion_status if it is still running.",
+    inputSchema: schema({
+      directory: str("Folder to write the export into (absolute path). Omit to preview."),
+      convert: { type: "boolean", description: "Also convert to USD with Isaac Lab." },
+      base: {
+        type: "string",
+        enum: ["auto", "fixed", "floating"],
+        description: "Fix the root link to the world, or leave it free. Saved with the project.",
+      },
+    }),
+    handler: async ({ directory, convert, base }) => {
+      if (base === "auto" || base === "fixed" || base === "floating")
+        app().edit((m) => (m.export.isaac = { ...m.export.isaac, base }));
+      const model = app().model;
+      const p = isaacPaths(model);
+      if (typeof directory !== "string" || !directory.trim()) {
+        const files = isaacFiles(model, false);
+        return {
+          folder: isaacFolderName(model),
+          files: [...files.keys(), ...model.meshes.map((m) => `${p.meshDir}/${m.file}`)],
+          cfg: files.get(p.cfg),
+          urdf: files.get(p.urdf),
+        };
+      }
+      const folder = await writeIsaacExport(model, directory.trim());
+      if (!convert) return { folder, usd_after_conversion: p.usd };
+      const done = convertIsaacFolder(model, folder);
+      const timeout = new Promise<null>((r) => setTimeout(() => r(null), CONVERT_WAIT_MS));
+      const result = await Promise.race([done, timeout]);
+      return conversionReport(result ?? useIsaacConversion.getState());
+    },
+  });
+
+  add({
+    name: "isaac_conversion_status",
+    description:
+      "State of the last Isaac USD conversion (running, done or failed), the USD path and the end of its output.",
+    inputSchema: schema({}),
+    handler: () => conversionReport(useIsaacConversion.getState()),
   });
 
   add({

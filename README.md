@@ -135,6 +135,9 @@ Everything runs locally. Your CAD never leaves your machine.
 - A URDF per target, one xacro that switches with `sim:=<target>`, an SDF model, launch files
   for RViz and Gazebo, `ros2_control` controllers, `ros_gz_bridge` topics, a world with your
   chosen environment and the sensor systems loaded, `package.xml` and `CMakeLists.txt`.
+- NVIDIA Isaac Sim / Isaac Lab: a URDF with relative mesh paths, an Isaac Lab
+  `ArticulationCfg` with actuator groups and the initial pose, and one-click USD conversion with
+  Isaac Lab. No ROS needed.
 - Validation catches broken trees, duplicate names, impossible inertia and bad limits before
   ROS does.
 

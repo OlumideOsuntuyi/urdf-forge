@@ -1,6 +1,7 @@
 /** User preferences, persisted to the webview's local storage. */
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { DEFAULT_ISAACLAB_PATH } from "@/core/isaac/export";
 
 export interface ThemeInfo {
   id: string;
@@ -32,6 +33,10 @@ export interface Settings {
   recentCommands: string[];
   cadQuality: "draft" | "normal" | "fine";
   showWelcome: boolean;
+  /** Isaac Lab checkout used to convert Isaac exports to USD. */
+  isaacLabPath: string;
+  /** Which export the export dialog shows. */
+  exportKind: "ros" | "isaac";
 }
 
 interface Actions {
@@ -56,6 +61,8 @@ export const useSettings = create<Settings & Actions>()(
       recentCommands: [],
       cadQuality: "normal",
       showWelcome: true,
+      isaacLabPath: DEFAULT_ISAACLAB_PATH,
+      exportKind: "ros",
       update: (p) => set(p),
       pushRecentCommand: (id) =>
         set((s) => ({
@@ -68,14 +75,19 @@ export const useSettings = create<Settings & Actions>()(
     }),
     {
       name: "urdf-forge.settings",
-      version: 3,
+      version: 4,
       // v2: the MCP server became on by default. v3: optional MCP access token.
+      // v4: Isaac Lab folder and export kind.
       migrate: (state, version) => {
         const s = state as Partial<Settings>;
         if (version < 2) s.mcpEnabled = true;
         if (version < 3) {
           s.mcpRequireToken = false;
           s.mcpToken = "";
+        }
+        if (version < 4) {
+          s.isaacLabPath = DEFAULT_ISAACLAB_PATH;
+          s.exportKind = "ros";
         }
         return s as Settings & Actions;
       },

@@ -168,7 +168,8 @@ export interface Link {
   controlled: boolean;
   drive: SimDrive;
   hidden: boolean;
-  /** Current joint position in the editor (pose preview). Not exported. */
+  /** Current joint position in the editor (pose preview). The Isaac Lab export uses it as the
+   * initial joint position; the ROS export does not write it. */
   jointValue: number;
 }
 
@@ -213,6 +214,15 @@ export interface MeshAsset {
   color: Rgba | null;
 }
 
+/** Isaac Sim / Isaac Lab export options. */
+export interface IsaacSettings {
+  /**
+   * "auto": fixed when the root link is `world` or the robot is an arm, floating for robots
+   * that move themselves (wheels, legs). "fixed" and "floating" force it.
+   */
+  base: "auto" | "fixed" | "floating";
+}
+
 export interface ExportSettings {
   targets: TargetId[];
   defaultTarget: TargetId;
@@ -226,6 +236,7 @@ export interface ExportSettings {
   maintainer: string;
   maintainerEmail: string;
   license: string;
+  isaac: IsaacSettings;
 }
 
 export interface RobotModel {
@@ -328,6 +339,7 @@ export function newModel(robot = "my_robot"): RobotModel {
       maintainer: "maintainer",
       maintainerEmail: "maintainer@example.com",
       license: "Apache-2.0",
+      isaac: { base: "auto" },
     },
   };
 }

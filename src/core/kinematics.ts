@@ -58,15 +58,17 @@ export function clampJoint(link: Link, value: number): number {
 }
 
 /**
- * Lowest z of the robot's visual and collision geometry in its own frame at zero joint positions.
- * Mesh vertices are sampled with `stride`; returns 0 for an empty robot.
+ * Lowest z of the robot's visual and collision geometry in its own frame, at zero joint
+ * positions unless `values` (by link id) are given. Mesh vertices are sampled with `stride`;
+ * returns 0 for an empty robot.
  */
 export function lowestZ(
   model: RobotModel,
   meshes: (id: string) => ArrayLike<number> | undefined,
   stride = 7,
+  values: Record<string, number> = {},
 ): number {
-  const W = linkWorldMatrices(model);
+  const W = linkWorldMatrices(model, values);
   let minZ = Infinity;
   const probe = (m: Matrix4, pts: ArrayLike<number>, step: number) => {
     const e = m.elements;

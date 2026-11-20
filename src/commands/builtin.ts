@@ -25,6 +25,7 @@ import {
   saveProjectFile,
 } from "@/app/io";
 import { loadSampleRobot } from "@/app/sample";
+import { exportIsaac } from "@/app/isaac";
 import { PROCEDURAL_ENVS } from "@/core/env/procedural";
 import { applyBuiltinEnvironment } from "@/samples/open";
 import { viewportRef } from "@/viewport/ref";
@@ -79,7 +80,10 @@ export function registerBuiltinCommands(): void {
       category: "File",
       shortcut: "Mod+E",
       keywords: "urdf xacro sdf launch",
-      run: () => app().openDialog("export"),
+      run: () => {
+        useSettings.getState().update({ exportKind: "ros" });
+        app().openDialog("export");
+      },
     },
     {
       id: "file.exportFolder",
@@ -104,6 +108,30 @@ export function registerBuiltinCommands(): void {
       title: "Export SDF model",
       category: "File",
       run: () => exportSingle("sdf"),
+    },
+    {
+      id: "file.exportIsaac",
+      title: "Export for Isaac Sim / Isaac Lab…",
+      category: "File",
+      keywords: "nvidia isaac lab usd articulation cfg reinforcement learning",
+      run: () => {
+        useSettings.getState().update({ exportKind: "isaac" });
+        app().openDialog("export");
+      },
+    },
+    {
+      id: "file.exportIsaacFolder",
+      title: "Export for Isaac to folder",
+      category: "File",
+      keywords: "nvidia isaac lab",
+      run: () => exportIsaac(),
+    },
+    {
+      id: "file.exportIsaacUsd",
+      title: "Export for Isaac and convert to USD",
+      category: "File",
+      keywords: "nvidia isaac lab usd convert",
+      run: () => exportIsaac({ convert: true }),
     },
     {
       id: "file.sample",

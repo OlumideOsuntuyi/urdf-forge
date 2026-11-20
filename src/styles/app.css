@@ -1416,6 +1416,11 @@ input[type="range"]::-webkit-slider-thumb {
   flex-direction: column;
   gap: 12px;
 }
+/* Fields keep their height (and hint row) when a dialog's content overflows. */
+.dialog > .body > .field,
+.dialog > .body > .callout {
+  flex-shrink: 0;
+}
 .dialog > footer {
   display: flex;
   align-items: center;
@@ -1862,4 +1867,18 @@ input[type="range"]::-webkit-slider-thumb {
   width: 100%;
   height: 100%;
   object-fit: contain;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .spin {
+    animation: none;
+  }
 }

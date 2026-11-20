@@ -10,9 +10,31 @@ import { pluginExporters } from "@/plugins/host";
 import { meshStore } from "@/store/meshStore";
 import { saveBytes } from "@/platform";
 import { Dialog } from "./Dialog";
-import { Field, TextField, Toggle } from "../controls";
+import { Field, Segmented, TextField, Toggle } from "../controls";
+import { useSettings } from "@/store/settings";
+import { IsaacExportDialog } from "./IsaacExport";
+
+/** Switch between the ROS 2 package and the Isaac export. */
+function ExportKind() {
+  const kind = useSettings((s) => s.exportKind);
+  return (
+    <Segmented
+      value={kind}
+      onChange={(v) => useSettings.getState().update({ exportKind: v })}
+      options={[
+        { value: "ros", label: "ROS 2 + Gazebo" },
+        { value: "isaac", label: "NVIDIA Isaac Sim / Isaac Lab" },
+      ]}
+    />
+  );
+}
 
 export function ExportDialog() {
+  const kind = useSettings((s) => s.exportKind);
+  return kind === "isaac" ? <IsaacExportDialog kind={<ExportKind />} /> : <RosExportDialog />;
+}
+
+function RosExportDialog() {
   const model = useApp((s) => s.model);
   const ex = model.export;
   const [file, setFile] = useState<string | null>(null);
@@ -75,6 +97,7 @@ export function ExportDialog() {
         </>
       }
     >
+      <ExportKind />
       {errors.length > 0 && (
         <div className="callout error">
           <XCircle size={14} />

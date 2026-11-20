@@ -197,6 +197,27 @@ controller for servos and a velocity controller for wheels and continuous joints
 ros2 topic pub /velocity_controller/commands std_msgs/msg/Float64MultiArray "{data: [3, 3, 3, 3]}"
 ```
 
+### NVIDIA Isaac Sim / Isaac Lab
+
+**File → Export for Isaac Sim / Isaac Lab…** (or the switch at the top of the export dialog)
+writes a folder for Isaac instead of a ROS package:
+
+- `urdf/<robot>.urdf` with mesh paths relative to the file and no Gazebo or ros2_control tags,
+  and the meshes next to it;
+- `isaaclab/<robot>_cfg.py`, an Isaac Lab 3 `ArticulationCfg`: spawned from the converted USD
+  (or the URDF), the current pose as the initial joint positions, revolute and prismatic joints
+  in a position-controlled `ImplicitActuatorCfg`, continuous joints (wheels) velocity-controlled,
+  and effort and velocity limits from the URDF;
+- `convert_to_usd.ps1` / `.sh`, which run Isaac Lab's `scripts/tools/convert_urdf.py` headless
+  through `uv` and write `usd/<robot>/<robot>.usda`;
+- `isaaclab/check_<robot>.py`, which spawns the robot and holds its pose, and a README.
+
+**Base** decides `fix_base`: Auto fixes arms and robots anchored to a `world` link and frees
+wheeled and legged robots. **Export and convert to USD** also runs the conversion with the Isaac
+Lab folder from **Settings → General** and shows its output; without Isaac Lab the button says
+what is missing and **Export to folder** still writes everything. Walkthrough:
+[Tutorial 8](tutorials/08-export-to-isaac-lab.md).
+
 ## Projects
 
 **File → Save** writes a `.forge` file containing the robot and every mesh. Exported packages

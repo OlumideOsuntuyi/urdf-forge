@@ -6,6 +6,20 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- NVIDIA Isaac Sim / Isaac Lab export: a folder with a URDF whose mesh paths are relative to it
+  (no `package://`, Gazebo or ros2_control tags), an Isaac Lab 3 `ArticulationCfg` (fixed or
+  floating base, the current pose as initial joint positions, position-controlled revolute and
+  prismatic joints, velocity-controlled wheels, limits from the URDF), `convert_to_usd.ps1` /
+  `.sh` scripts that run Isaac Lab's `convert_urdf.py`, a script that checks the cfg in Isaac
+  Lab, and a README.
+- **Export and convert to USD** runs the conversion with the Isaac Lab folder set in Settings
+  and streams its output into the export dialog. Without Isaac Lab the files are still written
+  and the dialog says what is missing.
+- MCP tools `export_isaac` and `isaac_conversion_status`.
+- Tutorial 8: export to Isaac Sim and Isaac Lab.
+
 ## [0.2.0] - 2026-11-10
 
 ### Added

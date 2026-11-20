@@ -13,6 +13,7 @@ use the [user guide](../user-guide.md).
 | 5   | [Export and run in Gazebo](05-export-and-run-in-gazebo.md)       | Validation, the ROS 2 package, ros2_control, launch files and worlds            |
 | 6   | [Automate with an AI assistant (MCP)](06-automate-with-mcp.md)   | Connect a client and edit robots by asking                                      |
 | 7   | [Write a plugin](07-write-a-plugin.md)                           | Add a command, an exporter and an MCP tool in JavaScript                        |
+| 8   | [Export to Isaac Sim and Isaac Lab](08-export-to-isaac-lab.md)   | Base, initial pose, USD conversion and the Isaac Lab `ArticulationCfg`          |
 
 ## Before you start
 
@@ -24,6 +25,7 @@ use the [user guide](../user-guide.md).
 - Tutorial 5 needs a ROS 2 installation (Humble, Jazzy, Kilted, Lyrical or Rolling) with
   Gazebo, on Linux or in a container or VM.
 - Tutorial 6 needs an MCP client such as Cursor or VS Code.
+- Tutorial 8 needs Isaac Lab 3 with Isaac Sim 6 (installed with uv); no ROS.
 
 Conventions: <kbd>Mod</kbd> is <kbd>Ctrl</kbd> (<kbd>⌘</kbd> on macOS). Units follow ROS
 REP 103: metres, kilograms, radians, Z up, X forward.

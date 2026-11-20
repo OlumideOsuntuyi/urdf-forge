@@ -79,6 +79,8 @@ token** replaces the token and disconnects clients that use the old one.
 | `set_drive`                     | How the preview drives a joint (servo, wheel)                               |
 | `validate`                      | Errors and warnings                                                         |
 | `generate_urdf`                 | URDF text for a target                                                      |
+| `export_isaac`                  | Isaac Sim / Isaac Lab export: preview, write to a folder, convert to USD    |
+| `isaac_conversion_status`       | State and output of the last USD conversion                                 |
 | `list_commands` / `run_command` | Run any editor command                                                      |
 | `list_components`               | The component library and each component's parameters                       |
 | `add_component`                 | Insert a component (with parameter overrides) attached to a link            |

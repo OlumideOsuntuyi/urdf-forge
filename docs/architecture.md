@@ -59,6 +59,12 @@ reviews the bodies in the import dialog before `importPartsIn` creates mesh asse
 Target-specific details (plugin names, message namespaces, resource-path variables) come from
 `TARGETS` in src/core/ros/targets.ts, so adding a distribution means adding one entry there.
 
+NVIDIA Isaac is not a ROS target, so it has its own builder: `buildIsaacExport`
+(src/core/isaac/export.ts) reuses the URDF link and joint writers with mesh paths relative to
+the file, and adds the Isaac Lab cfg and conversion scripts. Converting to USD runs the
+exported `convert_to_usd` script from Rust (src-tauri/src/isaac.rs), which streams the
+script's output back to the webview over a Tauri channel.
+
 ## Simulation
 
 Pose mode applies joint values through forward kinematics (src/core/kinematics.ts). Physics

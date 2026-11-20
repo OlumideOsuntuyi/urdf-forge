@@ -158,3 +158,5 @@ ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args \
 ## Next
 
 Let an assistant do the repetitive parts: [Tutorial 6, Automate with MCP](06-automate-with-mcp.md).
+Simulating in NVIDIA Isaac instead of Gazebo? See
+[Tutorial 8, Export to Isaac Sim and Isaac Lab](08-export-to-isaac-lab.md).
